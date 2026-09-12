@@ -185,7 +185,7 @@ func placement(stone: Node3D, color: int, empowered: bool, storm: bool = false, 
 		var strike:=lightning(end,color)
 		await strike.finished
 
-func lightning(where:Vector3, color:int, audible:bool=true, thunder_db:float=-6.0) -> Node3D:
+func lightning(where:Vector3, color:int, audible:bool=true, thunder_db:float=-9.0) -> Node3D:
 	var strike:=LightningStrike.new()
 	strike.position=where
 	strike.color=color
