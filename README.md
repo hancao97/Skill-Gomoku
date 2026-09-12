@@ -2,7 +2,7 @@
 
 雨落松间，棋起万象。使用 **Godot + Blender** 制作的本地双人 3D 五子棋，包含雨林棋境、黑白棋子专属演出和三种隐藏技法。
 
-当前版本 **2.5.0**。运行与导出已在 **macOS / Apple Silicon、Godot 4.7.2、Forward+ / Metal** 上验证；其他平台尚未验证。两位玩家共用一台电脑和鼠标。
+当前版本 **2.5.1**。运行与导出已在 **macOS / Apple Silicon、Godot 4.7.2、Forward+ / Metal** 上验证；其他平台尚未验证。两位玩家共用一台电脑和鼠标。
 
 ![雨中棋盘实机画面](docs/images/gameplay.png)
 
@@ -29,7 +29,7 @@ GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot
 
 输入两位玩家的名字，选择「入林 · 开局」。双方轮流点击空交点落子。
 
-- 鼠标移到空交点时，显示当前棋色的**悬浮棋子**；移到已有棋子、离开棋盘或打开菜单时隐藏。双方都可使用这个落点预览，关闭特效后仍然保留。
+- 鼠标移到空交点时，显示当前棋色的**半透明预览棋子**。视觉中心对齐吸附交点，随鼠标立即更新，不再额外悬空或上下浮动；移到已有棋子、离开棋盘或打开菜单时隐藏。双方都可使用，关闭特效后仍然保留。
 - **15×15 棋盘，黑棋先手**，无禁手；任一方向五子或长连计胜。
 - **五局三胜**，每局决出胜负后交换黑白，先得三胜即结束比赛。
 - 和棋重赛当前局，保持本局颜色和局数。
@@ -113,11 +113,14 @@ mkdir -p builds
 # Dummy 仍经过游戏混音总线，但不向扬声器输出测试声音。
 "$GODOT_BIN" --path . --audio-driver Dummy -- --verify --settings-check
 "$GODOT_BIN" --path . --audio-driver Dummy -- --verify --feedback-check
+"$GODOT_BIN" --path . --audio-driver Dummy -- --verify --hover-check
 "$GODOT_BIN" --path . --audio-driver Dummy -- --verify --effect-priority
 "$GODOT_BIN" --path . --audio-driver Dummy -- --verify --audio-check
 ```
 
 `--verify` 使用独立内存棋局，不覆盖玩家存档或声音设置；测试目录自动建立。结果、截图和录音写入 `verification/`，不会提交到 Git 或打包进游戏。
+
+`--hover-check` 专门检查预览中心对齐、即时跟随、落点一致及隐藏条件，结果写入包含完整补丁版本号的目录（当前为 `verification/v2.5.1/`）。
 
 macOS 后台自动回放可追加 `--isolated-replay`：固定大小的测试窗口保持绘制，忽略桌面真实鼠标与焦点变化，测试脚本仍走游戏输入与控件处理。失焦取消由回放显式触发同一处理函数。普通游戏不受该测试选项影响。
 

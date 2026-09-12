@@ -49,10 +49,10 @@ var quitting := false
 var stone_materials: Dictionary = {}
 var hover_preview: Node3D
 var hover_models: Dictionary = {}
+var hover_centers: Dictionary = {}
 var hover_cell := Vector2i(-1,-1)
 var pointer_screen := Vector2(-1,-1)
 var pointer_inside := false
-var hover_clock := 0.0
 var isolated_replay := false
 const HOLD_SECONDS := 2.0
 func _ready() -> void:
@@ -117,6 +117,7 @@ func _ready() -> void:
 		if OS.get_cmdline_user_args().has("--audio-check"):test_path="res://tests/playback_audio.gd"
 		if OS.get_cmdline_user_args().has("--settings-check"):test_path="res://tests/playback_settings.gd"
 		if OS.get_cmdline_user_args().has("--feedback-check"):test_path="res://tests/playback_feedback.gd"
+		if OS.get_cmdline_user_args().has("--hover-check"):test_path="res://tests/playback_feedback.gd"
 		var runner = load(test_path).new()
 		add_child(runner)
 		runner.call_deferred("run",self)
@@ -196,14 +197,14 @@ func world(p: Vector2i) -> Vector3:
 func world_float(p: Vector2) -> Vector3:
 	return Vector3((p.x-7)*STEP,HEIGHT,(p.y-7)*STEP)
 
-func screen_to_world(screen: Vector2) -> Vector3:
+func screen_to_world(screen: Vector2, plane_height: float = HEIGHT) -> Vector3:
 	var origin := scenery.camera.project_ray_origin(screen)
 	var ray := scenery.camera.project_ray_normal(screen)
 	if absf(ray.y) < .0001:
-		return Vector3(1000,HEIGHT,1000)
-	var distance := (HEIGHT-origin.y)/ray.y
+		return Vector3(1000,plane_height,1000)
+	var distance := (plane_height-origin.y)/ray.y
 	if distance < 0:
-		return Vector3(1000,HEIGHT,1000)
+		return Vector3(1000,plane_height,1000)
 	return origin+ray*distance
 
 func screen_to_cell(screen: Vector2) -> Vector2i:
@@ -277,8 +278,15 @@ func _make_hover_preview() -> void:
 		var model:Node3D=(BLACK_MODEL if color==Rules.BLACK else WHITE_MODEL).instantiate()
 		hover_preview.add_child(model)
 		_neutral_stone(model,color)
+		var bounds:=AABB()
+		var first:=true
 		for mesh:MeshInstance3D in model.find_children("*","MeshInstance3D"):
 			mesh.transparency=.22
+			mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var box:AABB=hover_preview.global_transform.affine_inverse()*mesh.global_transform*mesh.get_aabb()
+			bounds=box if first else bounds.merge(box)
+			first=false
+		hover_centers[color]=bounds.get_center()
 		model.hide()
 		hover_models[color]=model
 	_hide_hover()
@@ -293,8 +301,7 @@ func _pointer_left() -> void:
 	# Losing the window cannot leave an unseen charge waiting for a later release.
 	if is_instance_valid(fx):_cancel_gesture()
 
-func _update_hover(delta:float) -> void:
-	hover_clock+=delta
+func _update_hover() -> void:
 	if not pointer_inside or not playing or busy or paused or in_cinema or ui.modal.visible or not rules.active() or anchor.x>=0 or press_cell.x>=0:
 		_hide_hover()
 		return
@@ -307,7 +314,11 @@ func _update_hover(delta:float) -> void:
 		_hide_hover()
 		return
 	hover_cell=p
-	hover_preview.position=world(p)+Vector3.UP*(.16+sin(hover_clock*2.4)*.013)
+	# Align the model's visible center with the snapped board point in screen space.
+	# Picking still uses the board plane, so preview and click select the same cell.
+	var center:Vector3=hover_centers[rules.turn]
+	var target:=scenery.camera.unproject_position(world(p))
+	hover_preview.position=screen_to_world(target,HEIGHT+center.y)-center
 	hover_preview.set_meta("color",rules.turn)
 	for color:int in hover_models:hover_models[color].visible=color==rules.turn
 	# The unadorned cursor is an input aid for both players, including with VFX off.
@@ -325,7 +336,7 @@ func _refresh() -> void:
 	ui.refresh(rules,busy,acting_player if busy else -1,acting_color)
 
 func _process(delta:float) -> void:
-	_update_hover(delta)
+	_update_hover()
 	if shake_remaining>0:
 		shake_remaining=maxf(0,shake_remaining-delta)
 		scenery.camera.h_offset=sin(shake_remaining*81.0)*shake_strength*shake_remaining
@@ -375,6 +386,7 @@ func _input(event:InputEvent) -> void:
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		pointer_screen=event.position
 		pointer_inside=true
+		if event is InputEventMouseMotion:_update_hover()
 	if anchor.x<0 and press_cell.x<0:return
 	if busy or paused or ui.modal.visible:
 		_cancel_gesture()

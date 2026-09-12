@@ -5,17 +5,21 @@ const Storm=preload("res://scripts/lightning_strike.gd")
 var overlap_frames:=0
 var thunder_count:=0
 var charge_levels:Array[Dictionary]=[]
+var hover_measurements:Array[Dictionary]=[]
 
 func _process(_delta:float) -> void:
 	if game==null:return
 	if game.in_cinema or is_instance_valid(game.charge_preview) or is_instance_valid(game.bow_preview):
 		if game.fx.get_children().any(func(n:Node):return (n is Recoil or n is Storm) and not n.is_queued_for_deletion()):overlap_frames+=1
 
-func point(screen:Vector2) -> void:
+func move_pointer(screen:Vector2) -> void:
 	var event:=InputEventMouseMotion.new()
 	event.set_meta("replay_input",true)
 	event.position=screen;event.global_position=screen
 	get_viewport().push_input(event,true)
+
+func point(screen:Vector2) -> void:
+	move_pointer(screen)
 	await pause(.06)
 
 func hovering(p:Vector2i,color:int) -> bool:
@@ -23,6 +27,45 @@ func hovering(p:Vector2i,color:int) -> bool:
 
 func no_charge() -> bool:
 	return not is_instance_valid(game.charge_preview) and not is_instance_valid(game.charge_radiance) and not game.charge_ready
+
+func projected_preview_center(color:int) -> Vector2:
+	var low:=Vector2(INF,INF)
+	var high:=-low
+	for mesh:MeshInstance3D in game.hover_models[color].find_children("*","MeshInstance3D"):
+		for corner in 8:
+			var vertex:=mesh.global_transform*mesh.get_aabb().get_endpoint(corner)
+			var pixel:Vector2=game.scenery.camera.unproject_position(vertex)
+			low=low.min(pixel);high=high.max(pixel)
+	return (low+high)*.5
+
+func check_hover_alignment() -> void:
+	var old_size:=get_window().size
+	for size in [Vector2i(1280,800),Vector2i(1920,1200)]:
+		get_window().size=size
+		await pause(.25)
+		for color in [1,2]:
+			game.rules.turn=color
+			for cell:Vector2i in [Vector2i(0,0),Vector2i(14,0),Vector2i(7,7),Vector2i(0,14),Vector2i(14,14)]:
+				var target:=pos(cell)
+				move_pointer(target)
+				check(hovering(cell,color),"pointer updates immediately: %s, color %d, cell %s"%[size,color,cell])
+				var pixels_per_unit:=float(size.x)/get_viewport().get_visible_rect().size.x
+				var error:=projected_preview_center(color).distance_to(target)*pixels_per_unit
+				hover_measurements.append({"size":str(size),"color":color,"cell":str(cell),"error_pixels":error})
+				check(error<1.0,"visible stone stays within one pixel of its target: %.3f px"%error)
+				await pause(.015)
+	game.rules.turn=1
+	get_window().size=old_size
+	await pause(.25)
+	await point(pos(Vector2i(7,7)))
+	var before:=projected_preview_center(1)
+	await pause(.70)
+	check(projected_preview_center(1).distance_to(before)<.01,"stationary cursor has no floating or vertical bob")
+	var selected:Vector2i=game.hover_cell
+	button(pos(selected),true);button(pos(selected),false)
+	await idle()
+	check(game.rules.at(selected)==1 and game.rules.last==selected,"click places on the exact previewed intersection")
+	await fixture(0,1)
 
 func light_sample(name:String) -> void:
 	await capture(name)
@@ -58,6 +101,8 @@ func run(target) -> void:
 	game=target
 	var version:=str(ProjectSettings.get_setting("application/config/version")).split(".")
 	output=ProjectSettings.globalize_path("res://verification/v%s.%s"%[version[0],version[1]])
+	var hover_only:=OS.get_cmdline_user_args().has("--hover-check")
+	if hover_only:output=ProjectSettings.globalize_path("res://verification/v"+str(ProjectSettings.get_setting("application/config/version")))
 	game.apply_settings(true,true,true,true,true)
 	game.fx.thunder_struck.connect(func():thunder_count+=1)
 	if OS.get_cmdline_user_args().has("--charge-showcase"):
@@ -73,9 +118,10 @@ func run(target) -> void:
 		get_tree().quit()
 		return
 	await fixture(0,1)
+	if hover_only:await check_hover_alignment()
 	seed_board([[3,3],[5,5]],1);seed_board([[3,4],[6,5]],2)
 	await point(pos(Vector2i(7,7)))
-	check(hovering(Vector2i(7,7),1) and game.hover_preview.position.y>game.HEIGHT,"empty point shows a floating black cursor")
+	check(hovering(Vector2i(7,7),1) and is_equal_approx(game.hover_preview.position.y,game.HEIGHT),"empty point shows an aligned black cursor without artificial lift")
 	check(game.rules.move_count==0 and game.stones.size()==4,"hovering never places a stone or changes the turn")
 	check(game.hover_preview.find_children("*","GPUParticles3D",true,false).is_empty(),"both players' cursor stays free of skill hints and auras")
 	await capture("hover-black")
@@ -108,6 +154,12 @@ func run(target) -> void:
 	check(hovering(Vector2i(9,7),2),"returning to the window restores the correct cursor")
 	game.return_to_menu();await pause(.08)
 	check(not game.hover_preview.visible,"returning to the title clears the cursor")
+	if hover_only:
+		FileAccess.open(output+"/hover-result.json",FileAccess.WRITE).store_string(JSON.stringify({"checks":checks,"failures":failures,"measurements":hover_measurements},"  "))
+		print("HOVER CHECK: ",checks," checks; ",failures.size()," failures")
+		await game._shutdown_audio()
+		get_tree().quit(0 if failures.is_empty() else 1)
+		return
 
 	game.apply_settings(true,true,true,true,true)
 	for scenario in [[0,1],[1,2],[2,1],[2,2],[3,2],[3,1],[4,1]]:
