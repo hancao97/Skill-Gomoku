@@ -848,6 +848,7 @@ func _divine_hand() -> void:
 			trail.append(HAND_TOKEN_POSITION.lerp(bend,t).lerp(bend.lerp(end,t),t))
 		fx.fade(fx.ribbon(trail,.04,Color(.94,.94,.94,.48),true),1.4)
 	await hand_effect.assembled
+	await hand_effect.pointing
 	fx.sound("hand_point",-9)
 	await hand_effect.contacted
 	fx.sound("hand_impact",-5)

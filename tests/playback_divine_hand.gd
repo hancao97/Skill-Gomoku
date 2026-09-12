@@ -2,6 +2,16 @@ extends "res://tests/playback_v2.gd"
 
 var skill_voice_paths:Array[String]=[]
 var overlap_frames:=0
+var gesture_samples:Array[Dictionary]=[]
+
+func hand_time(seconds:float) -> void:
+	var deadline:=Time.get_ticks_msec()+6000
+	while is_instance_valid(game.hand_effect) and game.hand_effect.elapsed<seconds and Time.get_ticks_msec()<deadline:
+		await pause(.008)
+	check(is_instance_valid(game.hand_effect) and game.hand_effect.elapsed>=seconds,"Gesture reaches %.2f seconds"%seconds)
+	if is_instance_valid(game.hand_effect):
+		var hand=game.hand_effect
+		gesture_samples.append({"time":hand.elapsed,"tip":[hand.index_tip.x,hand.index_tip.y,hand.index_tip.z],"fps":Engine.get_frames_per_second()})
 
 func _process(_delta:float) -> void:
 	if game and game.in_cinema:
@@ -17,7 +27,7 @@ func tap_token() -> void:
 func run(target) -> void:
 	game=target
 	game.apply_settings(true,true,true)
-	output=ProjectSettings.globalize_path("res://verification/v2.7")
+	output=ProjectSettings.globalize_path("res://verification/v2.8")
 	game.fx.child_entered_tree.connect(func(node:Node):
 		if node is AudioStreamPlayer:skill_voice_paths.append(node.stream.resource_path)
 	)
@@ -54,13 +64,22 @@ func run(target) -> void:
 	await tap_token()
 	check(game.busy and game.in_cinema and is_instance_valid(game.hand_effect),"Real mouse click starts the hand cinematic")
 	check(not game.hand_token.visible and not game.hover_preview.visible,"Consumed token and hover disappear during the skill")
-	await pause(.8);await capture("hand-02-gather")
-	await pause(.95);await capture("hand-03-pose")
-	check(game.hand_effect.phase=="pose" and game.hand_effect.get_meta("stone_color")==2,"White stone mosaic holds the recognizable pointing pose")
-	check(game.hand_effect.pieces.size()>game.rules.divine_hand_cells().size(),"Palm has three-dimensional stone layers")
+	await hand_time(.8);await capture("hand-02-gather")
+	await hand_time(1.74);await capture("hand-03-curled")
+	var curled_tip:Vector3=game.hand_effect.index_tip
+	check(game.hand_effect.phase=="pose" and game.hand_effect.get_meta("stone_color")==2,"White hand assembles in the reference's folded pose")
+	check(game.hand_effect.pieces.size()>game.rules.divine_hand_cells().size(),"Palm has additional stones for its curved surface and underside")
 	check(game.hand_effect.pearl.albedo_color.r>.9 and game.hand_effect.pearl.albedo_color.b>.9,"Hand body remains silver white")
-	await pause(1.36);await capture("hand-04-contact")
-	await inscription("divine_hand");await capture("hand-05-calligraphy")
+	await hand_time(2.54);await capture("hand-04-pointing")
+	var extended_tip:Vector3=game.hand_effect.index_tip
+	check(extended_tip.distance_to(curled_tip)>2.0,"Wrist travels outward and the index actually unfolds")
+	check(game.hand_effect.contour.visible and game.hand_effect.current_outline.size()>40,"A continuous hand contour follows the stones")
+	check(game.hand_effect.mosaic.multimesh.instance_count==game.hand_effect.pieces.size(),"All animated pearls share a single instanced mesh")
+	await hand_time(3.15);await capture("hand-05-retracted")
+	check(game.hand_effect.index_tip.distance_to(extended_tip)>1.0,"Hand retracts between the reference point and final strike")
+	await hand_time(4.12);await capture("hand-06-contact")
+	check(game.hand_effect.index_tip.distance_to(game.world(game.rules.HAND_TIP))<.015,"Final pointing fingertip meets the actual white footprint intersection")
+	await inscription("divine_hand");await capture("hand-07-calligraphy")
 	var area:Array[Vector2i]=game.rules.divine_hand_cells()
 	check(area.all(func(p:Vector2i):return game.rules.at(p)==2 and game.stones.has(p) and game.stones[p].get_meta("color")==2),"Visible white hand footprint matches all logical cells")
 	check(game.rules.at(Vector2i(2,3))==before[3*15+2] and game.rules.at(Vector2i(3,4))==before[4*15+3],"Outside stones keep their original colors")
@@ -84,7 +103,7 @@ func run(target) -> void:
 	check(game.rules.divine_hand_cells().all(func(p:Vector2i):return game.stones[p].get_meta("color")==2),"Effects-off synchronizes every hand stone")
 	check(overlap_frames==0,"No ordinary thunder overlaps the hand")
 	var report:=FileAccess.open(output+"/hand-playback.json",FileAccess.WRITE)
-	report.store_string(JSON.stringify({"checks":checks,"failures":failures,"overlap_frames":overlap_frames,"voices":skill_voice_paths},"  "))
+	report.store_string(JSON.stringify({"checks":checks,"failures":failures,"overlap_frames":overlap_frames,"voices":skill_voice_paths,"gesture_samples":gesture_samples},"  "))
 	print("DIVINE HAND PLAYBACK: ",checks," checks; ",failures.size()," failures")
 	await game._shutdown_audio()
 	get_tree().quit(0 if failures.is_empty() else 1)

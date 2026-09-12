@@ -63,8 +63,20 @@ python tools/preview_skill_audio.py
 
 `build_skill_audio.py` 只重制技能与胜利声音，可以单独运行；全量重建时应放在旧版构建脚本之后。当前版本使用 Freesound 页面公开的高质量 MP3 预览，源文件摘要记入本地 `verification/v2.6/skill-audio-build.json`。脚本生成的张力和聚气循环区间与 `scripts/effects_v2.gd` 中的 `GESTURE_LOOPS` 对应，修改区间后须同时更新音频测量脚本并重跑声音回放。
 
-`build_hand_audio.py` 只重建「神之一手」三段音频，输出摘要位于 `verification/v2.7/hand-audio-build.json`。它使用前表中的 Magic Whoosh、Icy Magic Cast、Reverberant Slam 三份源文件，以及已有的 `stone_02.wav`。仓库内 WAV 的 `.import` 文件固定为未压缩 PCM，重建时保留这些配置。手形由 `scripts/rules.gd` 的 `HAND_SHAPE` 统一定义，空中棋子和最终白子手印共享同一组交点；动画实现见 `scripts/divine_hand.gd`。
+`build_hand_audio.py` 只重建「神之一手」三段音频，输出摘要位于 `verification/v2.7/hand-audio-build.json`。它使用前表中的 Magic Whoosh、Icy Magic Cast、Reverberant Slam 三份源文件，以及已有的 `stone_02.wav`。仓库内 WAV 的 `.import` 文件固定为未压缩 PCM，重建时保留这些配置。最终 65 点手印由 `scripts/rules.gd` 的 `HAND_SHAPE` 定义。2.8 的空中手势改用独立的曲面布子，详见下节。
 
 设置、声音和互斥回放默认写入当前版本的测试目录，例如 2.5 对应 `verification/v2.5/`；音频分析器也默认读取该目录。分析旧版录音可显式传入 `python tools/verify_audio.py --output-dir verification/v2.4`。
 
 旧版 `tools/build_audio.py` 和 `tests/playback.gd` 保留作早期版本参考，不属于当前默认构建与验证流程。当前回放入口是 `tests/playback_v2.gd` 及其派生脚本。悬浮、震子和墨色蓄力通过 `--verify --feedback-check` 验证。
+
+## 神之一手 · 动作与轮廓
+
+2.8 参考用户指定的[片尾手势 GIF](https://q7.itc.cn/images01/20260109/6ecf91907d124e3f9d4f664c6aa222a4.gif)。参考文件为 284×366、91 帧、7.40 秒；观察第 67、70、71、72、74、78、80 帧（帧号从 0 开始，约 5.46–6.50 秒）的收指、送腕、伸指和回腕。动作根据低分辨率画面人工概括，不是动作捕捉数据；末尾额外重复伸指姿态并加深压落，衔接游戏的指尖触盘。
+
+`hand_gesture.gd` 保存腕部位置、旋转、食指弯曲的关键姿态，建立掌面、四条可见手指曲线及连续边界。`divine_hand.gd` 将 119 颗白子绑定到掌面与指节，用一个 MultiMesh 动画；`hand_contour.gdshader` 显示银白掌缘和薄透掌面。轮廓、棋子和指尖使用相同的形变函数。腕部与掌面另有错层棋子，后三指的曲面向上弯起。
+
+演出顺序：1.70 秒聚合，2.40 秒手势动作，4.10 秒指尖接触交点，5.32 秒前完成手印和轮廓消散。65 颗对应棋子落到既有规则手形，额外雕塑棋子消失，不改变其他交点。图形与声音关闭开关继续独立控制。
+
+参考 GIF、裁剪观察图和录像只留在被忽略的 `verification/v2.8/`，不复制真人画面或 GIF 到游戏资源。参考文件 SHA-256：`1881ab126e7244adacfa4382781fb81cfdf729b326cf02ebe0901d86fcac9a84`。
+
+复验：`Godot --headless --path . --script tests/test_hand_gesture.gd`，并运行 `--verify --isolated-replay --hand-check` 检查真实画面、指尖触盘及棋盘结果。

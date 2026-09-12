@@ -2,7 +2,7 @@
 
 雨落松间，棋起万象。使用 **Godot + Blender** 制作的本地双人 3D 五子棋，包含雨林棋境、黑白棋子专属演出和四种隐藏技法。
 
-当前版本 **2.7.0**。运行与导出已在 **macOS / Apple Silicon、Godot 4.7.2、Forward+ / Metal** 上验证；其他平台尚未验证。两位玩家共用一台电脑和鼠标。
+当前版本 **2.8.0**。运行与导出已在 **macOS / Apple Silicon、Godot 4.7.2、Forward+ / Metal** 上验证；其他平台尚未验证。两位玩家共用一台电脑和鼠标。
 
 ![雨中棋盘实机画面](docs/images/gameplay.png)
 
@@ -68,7 +68,9 @@ GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot
 
 **雷电、震子与技能演出互斥**，大招不会再叠加普通落雷。关闭特效或开始技能时会清理残留演出，将棋子恢复原位。
 
-2.7 新增「神之一手」：银白棋子从棋盒旁飞起，聚为带立体掌面与弯曲手指的大手，食指向左下方压落，最终在棋盘上留下白子手印。聚子、指势、触盘分别配有声音，首次启动时预热模型和材质。
+2.8 重做「神之一手」的手势：119 颗银白棋子沿掌面和指节聚合，配上连续掌缘、指缝、腕线和半透明掌面。参考片尾的送腕、伸指和回腕动作，食指单独展开，另外三指保持微曲，最后下点并散落成 65 个白子交点。空中演出与棋盘手印分别排布，声音按聚子、运指、触盘衔接。
+
+![神之一手 · 2.8 实机动作演示](docs/images/divine-hand-motion.gif)
 
 <details>
 <summary>展开技法规则与操作（包含隐藏玩法）</summary>
@@ -120,6 +122,7 @@ mkdir -p builds
 # 棋局规则，不需要图形窗口。
 "$GODOT_BIN" --headless --path . --script tests/test_rules.gd
 "$GODOT_BIN" --headless --path . --script tests/test_divine_hand.gd
+"$GODOT_BIN" --headless --path . --script tests/test_hand_gesture.gd
 
 # 真实游戏场景中的输入与演出回放，需要图形环境。
 # Dummy 仍经过游戏混音总线，但不向扬声器输出测试声音。
@@ -133,9 +136,11 @@ mkdir -p builds
 
 `--verify` 使用独立内存棋局，不覆盖玩家存档或声音设置；测试目录自动建立。结果、截图和录音写入 `verification/`，不会提交到 Git 或打包进游戏。
 
-`--hover-check` 检查预览中心对齐、即时跟随、实际点击前后轮廓中心一致及隐藏条件，覆盖黑白棋、两种窗口尺寸和棋盘中央与四角，结果写入包含完整补丁版本号的目录（当前为 `verification/v2.7.0/`）。
+`--hover-check` 检查预览中心对齐、即时跟随、实际点击前后轮廓中心一致及隐藏条件，覆盖黑白棋、两种窗口尺寸和棋盘中央与四角，结果写入包含完整补丁版本号的目录（当前为 `verification/v2.8.0/`）。
 
-`--hand-check` 验证第二局棋盒旁白子的真实鼠标点击、手形落盘、双方归属、取消与设置开关，截图和结果写入 `verification/v2.7/`。附加 `--hand-showcase` 可只回放这一招，适用于录制演示。
+`tests/test_hand_gesture.gd` 检查 145 个插值姿态的完整轮廓、指头连接、65 次落印及跨帧事件顺序。
+
+`--hand-check` 验证第二局棋盒旁白子的真实鼠标点击、伸指与回腕、轮廓、指尖触盘、手形落盘、双方归属、取消与设置开关，截图和结果写入 `verification/v2.8/`。附加 `--hand-showcase` 可只回放这一招，适用于录制演示。
 
 macOS 后台自动回放可追加 `--isolated-replay`：固定大小的测试窗口保持绘制，忽略桌面真实鼠标与焦点变化，测试脚本仍走游戏输入与控件处理。失焦取消由回放显式触发同一处理函数。普通游戏不受该测试选项影响。
 
