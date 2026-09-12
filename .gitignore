@@ -1,0 +1,12 @@
+.godot/
+.DS_Store
+builds/
+verification/
+art/source/*.blend[0-9]*
+art/source/*.mp3
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+*.tmp

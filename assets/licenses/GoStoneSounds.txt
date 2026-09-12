@@ -1,0 +1,18 @@
+GoStoneSounds.ogg — billhails2
+Source: https://freesound.org/people/billhails2/sounds/588317/
+License: Creative Commons Zero 1.0 Universal (CC0)
+https://creativecommons.org/publicdomain/zero/1.0/
+Accessed: 2026-09-12
+
+Five recorded Yunzi go-stone placements on wooden go boards.
+First three: tabletop board with wooden legs.
+Last two: shin-kaya 19x19 thin board.
+Recorded with a Marantz Professional Umpire microphone.
+
+This project uses the source page's high-quality public MP3 preview,
+cut into five 44.1 kHz PCM WAV impacts. Edits: onset trimming,
+DC removal, level normalization and tail fades. No synthesized
+tone, pitch shift or reverb is added to the stone placements.
+
+CC0 permits copying, modifying, distributing and performing the
+work, including for commercial purposes, without asking permission.

@@ -1,0 +1,28 @@
+[gd_resource type="AudioBusLayout" load_steps=3 format=3]
+
+[sub_resource type="AudioEffectHighPassFilter" id="Subsonic"]
+resource_name = "Subsonic cleanup"
+cutoff_hz = 25.0
+resonance = 0.5
+
+[sub_resource type="AudioEffectHardLimiter" id="Safety"]
+resource_name = "Output safety · 2 dB headroom"
+pre_gain_db = -2.0
+ceiling_db = -2.0
+release = 0.12
+
+[resource]
+bus/0/name = &"Master"
+bus/0/volume_db = 0.0
+bus/0/effect/0/effect = SubResource("Subsonic")
+bus/0/effect/0/enabled = true
+bus/0/effect/1/effect = SubResource("Safety")
+bus/0/effect/1/enabled = true
+bus/1/name = &"Music"
+bus/1/send = &"Master"
+bus/2/name = &"Rain"
+bus/2/send = &"Master"
+bus/3/name = &"Effects"
+bus/3/send = &"Master"
+bus/4/name = &"Thunder"
+bus/4/send = &"Effects"
