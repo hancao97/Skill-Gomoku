@@ -343,7 +343,7 @@ func show_help() -> void:
 			settings_changed.emit(sound_on,music_on,high_quality,effects_on,skills_on))
 		popup.add_child(box)
 	label(popup,"完整光影包含体积雾与环境遮蔽。关闭可提升帧率。",Vector2(41,403),Vector2(640,24),12,MUTED)
-	label(popup,"棋子光效、雷电与招式演出",Vector2(43,518),Vector2(307,27),13,MUTED)
+	label(popup,"棋子光效、雷电震子与招式演出",Vector2(43,518),Vector2(307,27),13,MUTED)
 	label(popup,"允许触发隐藏招式",Vector2(383,518),Vector2(307,27),13,MUTED)
 	var note:=label(popup,"关闭特效不影响招式结果；关闭特技后按普通五子棋规则落子。\n更改立即生效，下次进入游戏仍会保留。",Vector2(41,571),Vector2(649,55),13,MUTED)
 	note.add_theme_constant_override("line_spacing",5)

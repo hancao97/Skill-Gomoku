@@ -6,6 +6,7 @@ const Effects = preload("res://scripts/effects_v2.gd")
 const Interface = preload("res://scripts/interface.gd")
 const BLACK_MODEL = preload("res://assets/models/black_stone.glb")
 const WHITE_MODEL = preload("res://assets/models/white_stone.glb")
+const ChargeRadiance = preload("res://scripts/charge_radiance.gd")
 const STEP := .46
 const HEIGHT := .669
 const SAVE_PATH := "user://match.json"
@@ -29,6 +30,7 @@ var press_screen := Vector2.ZERO
 var hold_time := 0.0
 var charge_preview: Node3D
 var charge_material: ShaderMaterial
+var charge_radiance: ChargeRadiance
 var charge_audio: AudioStreamPlayer
 var charge_ready := false
 var charge_started := false
@@ -45,6 +47,12 @@ var cinema_focus := Vector3.ZERO
 var in_cinema := false
 var quitting := false
 var stone_materials: Dictionary = {}
+var hover_preview: Node3D
+var hover_models: Dictionary = {}
+var hover_cell := Vector2i(-1,-1)
+var pointer_screen := Vector2(-1,-1)
+var pointer_inside := false
+var hover_clock := 0.0
 const HOLD_SECONDS := 2.0
 func _ready() -> void:
 	get_tree().auto_accept_quit=false
@@ -78,9 +86,12 @@ func _ready() -> void:
 	ui.menu_requested.connect(return_to_menu)
 	ui.paused_changed.connect(func(value: bool):paused=value;_cancel_gesture();_refresh())
 	ui.settings_changed.connect(apply_settings)
+	get_window().mouse_exited.connect(_pointer_left)
+	get_window().focus_exited.connect(_pointer_left)
 	fx.impact.connect(scenery.duck)
 	fx.thunder_struck.connect(func():shake(.028,.22))
 	_load_settings()
+	_make_hover_preview()
 	_load_match()
 	ui.show_menu(not saved_match.is_empty())
 	await _warmup_visuals()
@@ -89,6 +100,7 @@ func _ready() -> void:
 		if OS.get_cmdline_user_args().has("--effect-priority"):test_path="res://tests/playback_effect_priority.gd"
 		if OS.get_cmdline_user_args().has("--audio-check"):test_path="res://tests/playback_audio.gd"
 		if OS.get_cmdline_user_args().has("--settings-check"):test_path="res://tests/playback_settings.gd"
+		if OS.get_cmdline_user_args().has("--feedback-check"):test_path="res://tests/playback_feedback.gd"
 		var runner = load(test_path).new()
 		add_child(runner)
 		runner.call_deferred("run",self)
@@ -144,9 +156,13 @@ func _warmup_visuals() -> void:
 	var material:=ShaderMaterial.new()
 	material.shader=preload("res://shaders/stone_ink.gdshader")
 	for mesh:MeshInstance3D in stone.find_children("*","MeshInstance3D"):mesh.material_override=material
+	var radiance:=ChargeRadiance.new()
+	fx.add_child(radiance)
+	radiance.position=at
+	radiance.set_charge(.8)
 	await get_tree().create_timer(1.4).timeout
 	await RenderingServer.frame_post_draw
-	disk.queue_free();stone.queue_free()
+	disk.queue_free();stone.queue_free();radiance.cancel()
 	await ui.stage.end()
 	fx.clear_transients()
 	var reveal:=create_tween()
@@ -211,6 +227,7 @@ func _start_board() -> void:
 
 func _clear_board() -> void:
 	_cancel_gesture()
+	_hide_hover()
 	fx.clear_transients()
 	for child in stone_root.get_children():child.queue_free()
 	stones.clear()
@@ -236,6 +253,50 @@ func _neutral_stone(node:Node3D, color:int) -> void:
 	for mesh:MeshInstance3D in node.find_children("*","MeshInstance3D"):
 		mesh.material_override=stone_materials[color]
 
+func _make_hover_preview() -> void:
+	hover_preview=Node3D.new()
+	hover_preview.name="PointerStone"
+	add_child(hover_preview)
+	for color in [Rules.BLACK,Rules.WHITE]:
+		var model:Node3D=(BLACK_MODEL if color==Rules.BLACK else WHITE_MODEL).instantiate()
+		hover_preview.add_child(model)
+		_neutral_stone(model,color)
+		for mesh:MeshInstance3D in model.find_children("*","MeshInstance3D"):
+			mesh.transparency=.22
+		model.hide()
+		hover_models[color]=model
+	_hide_hover()
+
+func _hide_hover() -> void:
+	hover_cell=Vector2i(-1,-1)
+	if is_instance_valid(hover_preview):hover_preview.hide()
+
+func _pointer_left() -> void:
+	pointer_inside=false
+	_hide_hover()
+	# Losing the window cannot leave an unseen charge waiting for a later release.
+	if is_instance_valid(fx):_cancel_gesture()
+
+func _update_hover(delta:float) -> void:
+	hover_clock+=delta
+	if not pointer_inside or not playing or busy or paused or in_cinema or ui.modal.visible or not rules.active() or anchor.x>=0 or press_cell.x>=0:
+		_hide_hover()
+		return
+	var control:=get_viewport().gui_get_hovered_control()
+	if control and control.mouse_filter!=Control.MOUSE_FILTER_IGNORE:
+		_hide_hover()
+		return
+	var p:=screen_to_cell(pointer_screen)
+	if not rules.inside(p) or rules.at(p)!=Rules.EMPTY:
+		_hide_hover()
+		return
+	hover_cell=p
+	hover_preview.position=world(p)+Vector3.UP*(.16+sin(hover_clock*2.4)*.013)
+	hover_preview.set_meta("color",rules.turn)
+	for color:int in hover_models:hover_models[color].visible=color==rules.turn
+	# The unadorned cursor is an input aid for both players, including with VFX off.
+	hover_preview.show()
+
 func _convert(p:Vector2i, color:int, aura:bool=true) -> Node3D:
 	if stones.has(p):
 		if stones[p].get_meta("color")==color:return stones[p]
@@ -248,6 +309,7 @@ func _refresh() -> void:
 	ui.refresh(rules,busy,acting_player if busy else -1,acting_color)
 
 func _process(delta:float) -> void:
+	_update_hover(delta)
 	if shake_remaining>0:
 		shake_remaining=maxf(0,shake_remaining-delta)
 		scenery.camera.h_offset=sin(shake_remaining*81.0)*shake_strength*shake_remaining
@@ -291,6 +353,9 @@ func _unhandled_input(event:InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _input(event:InputEvent) -> void:
+	if event is InputEventMouseMotion or event is InputEventMouseButton:
+		pointer_screen=event.position
+		pointer_inside=true
 	if anchor.x<0 and press_cell.x<0:return
 	if busy or paused or ui.modal.visible:
 		_cancel_gesture()
@@ -325,7 +390,9 @@ func _cancel_gesture() -> void:
 	charge_started=false
 	if is_instance_valid(charge_preview):charge_preview.queue_free()
 	charge_preview=null
-	fx.release_sound(charge_audio)
+	if is_instance_valid(charge_radiance):charge_radiance.cancel()
+	charge_radiance=null
+	if is_instance_valid(charge_audio):fx.release_sound(charge_audio)
 	charge_audio=null
 	_clear_preview()
 
@@ -348,14 +415,17 @@ func _update_charge() -> void:
 		for mesh:MeshInstance3D in charge_preview.find_children("*","MeshInstance3D"):
 			mesh.material_override=charge_material
 		fx.smoke(world(press_cell)+Vector3.UP*.18,1,.9,false,20,1.0).reparent(charge_preview)
+		charge_radiance=ChargeRadiance.new()
+		fx.add_child(charge_radiance)
 	charge_preview.position=world(press_cell)+Vector3.UP*(.12+t*.58)
 	charge_preview.rotation.y=hold_time*3.0
 	charge_preview.scale=Vector3.ONE*(1.0+t*.75)
 	charge_material.set_shader_parameter("charge",t)
+	charge_radiance.position=charge_preview.position+Vector3.UP*.12
+	charge_radiance.set_charge(t)
 	if t>=1.0 and not charge_ready:
 		charge_ready=true
-		fx.glint(charge_preview.position+Vector3.UP*.2,1.35,.48)
-		fx.smoke(charge_preview.position,1,1.6,true,28,.7)
+		fx.smoke(charge_preview.position,1,1.6,true,28,.7).reparent(charge_preview)
 
 func place(p:Vector2i) -> void:
 	if busy or paused or not playing:return
@@ -368,7 +438,11 @@ func place(p:Vector2i) -> void:
 	_refresh()
 	var node:=_make_stone(p,result.color)
 	if result.skill=="moon":fx.clear_lightning()
-	await fx.placement(node,result.color,result.empowered,result.storm)
+	var opponents:Array[Node3D]=[]
+	if result.storm:
+		for q:Vector2i in stones:
+			if rules.at(q)==3-result.color:opponents.append(stones[q])
+	await fx.placement(node,result.color,result.empowered,result.storm,opponents)
 	await get_tree().create_timer(.13).timeout
 	if rules.pending_skill=="moon":await _moon()
 	elif not rules.active():await _round_end()
@@ -380,7 +454,7 @@ func place(p:Vector2i) -> void:
 func _clear_preview() -> void:
 	if is_instance_valid(bow_preview):bow_preview.queue_free()
 	bow_preview=null
-	fx.release_sound(draw_audio)
+	if is_instance_valid(draw_audio):fx.release_sound(draw_audio)
 	draw_audio=null
 
 func _aim_bow(mouse:Vector2) -> void:

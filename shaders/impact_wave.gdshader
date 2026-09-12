@@ -3,6 +3,7 @@ render_mode blend_mix, depth_draw_never, cull_disabled, unshaded, shadows_disabl
 uniform sampler2D grain : repeat_enable, filter_linear;
 uniform float progress = 0.0;
 uniform bool white_stone = false;
+uniform float strength = 1.0;
 void fragment() {
 	vec2 p=(UV-.5)*2.0;
 	float r=length(p);
@@ -14,5 +15,5 @@ void fragment() {
 	float fade=1.0-smoothstep(.54,1.0,progress);
 	ALBEDO=white_stone ? vec3(.92,.97,1.0) : vec3(.006,.007,.012);
 	EMISSION=white_stone ? vec3(1.3,1.45,1.6)*band : vec3(0.0);
-	ALPHA=clamp(band+brush,0.0,1.0)*fade;
+	ALPHA=clamp(band+brush,0.0,1.0)*fade*strength;
 }

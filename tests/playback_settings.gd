@@ -13,7 +13,8 @@ func no_visuals() -> bool:
 
 func run(target) -> void:
 	game=target
-	output=ProjectSettings.globalize_path("res://verification/v2.3")
+	var version:String=ProjectSettings.get_setting("application/config/version")
+	output=ProjectSettings.globalize_path("res://verification/v"+version.get_slice(".",0)+"."+version.get_slice(".",1))
 	game.apply_settings(true,true,true,true,true)
 	game.fx.thunder_struck.connect(func():thunder_count+=1)
 	game.ui.show_help();await pause(.12)

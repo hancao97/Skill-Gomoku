@@ -3,6 +3,7 @@ extends Node3D
 signal impact(strength: float)
 signal thunder_struck
 const LightningStrike=preload("res://scripts/lightning_strike.gd")
+const StoneRecoil=preload("res://scripts/stone_recoil.gd")
 const INK := Color("#08090f")
 const SILVER := Color("#f4f7ff")
 const CUES := {
@@ -154,7 +155,7 @@ func bind_aura(stone: Node3D, color: int) -> void:
 		var previous = auras.pop_front().get_ref()
 		if is_instance_valid(previous): previous.queue_free()
 
-func placement(stone: Node3D, color: int, empowered: bool, storm: bool = false) -> void:
+func placement(stone: Node3D, color: int, empowered: bool, storm: bool = false, opponents: Array[Node3D] = []) -> void:
 	empowered=empowered and visuals_enabled
 	var end := stone.position
 	stone.position.y += .68 if empowered else .13
@@ -172,6 +173,15 @@ func placement(stone: Node3D, color: int, empowered: bool, storm: bool = false) 
 	stone.scale = Vector3(1.04,.90,1.04)
 	settle.tween_property(stone,"scale",Vector3.ONE,.10)
 	if storm:
+		if not opponents.is_empty():
+			var recoil:=StoneRecoil.new()
+			recoil.origin=end
+			recoil.targets=opponents
+			add_child(recoil)
+			# A single, quiet landing sound for the group avoids a stack of 100 clacks.
+			recoil.landed.connect(func():sound("stone_02",-16.0))
+			var front:=wave(end,color,15.0,.50)
+			front.material_override.set_shader_parameter("strength",.32)
 		var strike:=lightning(end,color)
 		await strike.finished
 
@@ -196,6 +206,8 @@ func clear_lightning() -> void:
 	# Include fading voices, not just the most recent thunder, and stop light immediately.
 	for child in get_children():
 		if child is LightningStrike:
+			child.cancel()
+		elif child is StoneRecoil:
 			child.cancel()
 		elif child is AudioStreamPlayer and child.has_meta("placement_thunder"):
 			if child.playing:storm_release=get_tree().create_timer(.045)

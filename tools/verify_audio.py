@@ -1,13 +1,18 @@
 """Measure decoded assets and the actual Godot master capture; never normalize QA audio."""
 from pathlib import Path
+import argparse
 import json
+import re
 import subprocess
 import sys
 import numpy as np
 from audio_dsp import true_peak
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / 'verification/v2.2'
+version = re.search(r'^config/version="(\d+\.\d+)\.', (ROOT/'project.godot').read_text(), re.MULTILINE).group(1)
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--output-dir', type=Path, default=ROOT/'verification'/('v'+version))
+OUT = parser.parse_args().output_dir.resolve()
 OUT.mkdir(parents=True, exist_ok=True)
 RATE = 48000
 failures = []

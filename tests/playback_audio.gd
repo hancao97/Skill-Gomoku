@@ -19,7 +19,8 @@ func mark(label: String) -> void:
 
 func run(target) -> void:
 	game=target
-	output=ProjectSettings.globalize_path("res://verification/v2.2")
+	var version:String=ProjectSettings.get_setting("application/config/version")
+	output=ProjectSettings.globalize_path("res://verification/v"+version.get_slice(".",0)+"."+version.get_slice(".",1))
 	game.apply_settings(true,true,true)
 	game.fx.thunder_struck.connect(func():thunder_count+=1)
 	check(AudioServer.get_mix_rate()==48000,"48 kHz engine mix matches sound effects")
@@ -52,6 +53,7 @@ func run(target) -> void:
 	check(thunder_count==0,"early rounds retain dry stone sounds")
 	mark("late-round-thunder")
 	await fixture(2,1)
+	seed_board([[5,6],[7,8],[10,5]],2)
 	await click(Vector2i(6,6));await idle()
 	var before:=thunder_count
 	await click(Vector2i(8,6))
