@@ -53,12 +53,23 @@ var hover_cell := Vector2i(-1,-1)
 var pointer_screen := Vector2(-1,-1)
 var pointer_inside := false
 var hover_clock := 0.0
+var isolated_replay := false
 const HOLD_SECONDS := 2.0
 func _ready() -> void:
 	get_tree().auto_accept_quit=false
 	verification_mode = OS.get_cmdline_user_args().has("--verify")
-	DisplayServer.window_set_title("听雨弈境 · Rainfall")
+	isolated_replay=verification_mode and OS.get_cmdline_user_args().has("--isolated-replay")
+	DisplayServer.window_set_title("听雨弈境 · 自动回放（不保存棋局）" if verification_mode else "听雨弈境 · Rainfall")
 	if DisplayServer.get_name() != "headless":
+		if isolated_replay:
+			# Keep GPU captures drawing on macOS without taking the user's input.
+			var replay_window:=get_window()
+			replay_window.mode=Window.MODE_WINDOWED
+			for flag in [Window.FLAG_NO_FOCUS,Window.FLAG_MOUSE_PASSTHROUGH,Window.FLAG_RESIZE_DISABLED,Window.FLAG_ALWAYS_ON_TOP]:
+				replay_window.set_flag(flag,true)
+			replay_window.size=Vector2i(1280,800)
+			var area:=DisplayServer.screen_get_usable_rect()
+			replay_window.position=area.end-replay_window.size-Vector2i(24,24)
 		if not verification_mode:
 			var usable := DisplayServer.screen_get_usable_rect()
 			var width := mini(2160,usable.size.x-120)
@@ -88,6 +99,11 @@ func _ready() -> void:
 	ui.settings_changed.connect(apply_settings)
 	get_window().mouse_exited.connect(_pointer_left)
 	get_window().focus_exited.connect(_pointer_left)
+	if isolated_replay:
+		# Native desktop events cannot cancel scripted gestures in an unattended run.
+		# The feedback runner exercises the same cancellation callback explicitly.
+		get_window().mouse_exited.disconnect(_pointer_left)
+		get_window().focus_exited.disconnect(_pointer_left)
 	fx.impact.connect(scenery.duck)
 	fx.thunder_struck.connect(func():shake(.028,.22))
 	_load_settings()
@@ -353,6 +369,9 @@ func _unhandled_input(event:InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _input(event:InputEvent) -> void:
+	if isolated_replay and not event.get_meta("replay_input",false):
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		pointer_screen=event.position
 		pointer_inside=true
@@ -419,7 +438,7 @@ func _update_charge() -> void:
 		fx.add_child(charge_radiance)
 	charge_preview.position=world(press_cell)+Vector3.UP*(.12+t*.58)
 	charge_preview.rotation.y=hold_time*3.0
-	charge_preview.scale=Vector3.ONE*(1.0+t*.75)
+	charge_preview.scale=Vector3.ONE*(1.0+t*1.15)
 	charge_material.set_shader_parameter("charge",t)
 	charge_radiance.position=charge_preview.position+Vector3.UP*.12
 	charge_radiance.set_charge(t)
@@ -487,13 +506,13 @@ func _aim_bow(mouse:Vector2) -> void:
 	var a:=world(frame.ends[0])+Vector3.UP*.17
 	var b:=world(frame.ends[1])+Vector3.UP*.17
 	var cord:Array[Vector3]=[a,a.lerp(pull,.5),pull,pull.lerp(b,.5),b]
-	fx.ribbon(cord,.026,Effects.SILVER).reparent(bow_preview)
+	fx.ribbon(cord,.040,Effects.INK).reparent(bow_preview)
 	var arc:Array[Vector3]=[]
 	for i in 33:
 		var t:=float(i)/32
 		arc.append(a.lerp(b,t)+vector*sin(t*PI)*(.34+minf(dist,1.15)*.16))
 	fx.ribbon(arc,.18,Effects.INK).reparent(bow_preview)
-	fx.ribbon(arc,.018,Color(.75,.79,.88,.85)).reparent(bow_preview)
+	fx.ribbon(arc,.012,Color(.17,.17,.17,.70)).reparent(bow_preview)
 
 func _camera_to(position_target:Vector3, look:Vector3, field:float, seconds:float) -> void:
 	if camera_motion and camera_motion.is_running():camera_motion.kill()
@@ -553,7 +572,7 @@ func _bow(p:Vector2i, d:Vector2i) -> void:
 	for i in 25:trace.append(start.lerp(end,float(i)/24)+Vector3.UP*.1)
 	var stroke:=fx.ribbon(trace,.52,Effects.INK)
 	fx.fade(stroke,1.15)
-	var edge:=fx.ribbon(trace,.026,Effects.SILVER)
+	var edge:=fx.ribbon(trace,.012,Color(.17,.17,.17,.70))
 	fx.fade(edge,.55)
 	var progress:={"next":0}
 	var flight:=create_tween()

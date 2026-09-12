@@ -26,6 +26,7 @@ func capture(name:String) -> void:
 
 func button(pos:Vector2, down:bool) -> void:
 	var event:=InputEventMouseButton.new()
+	event.set_meta("replay_input",true)
 	event.position=pos;event.global_position=pos
 	event.button_index=MOUSE_BUTTON_LEFT
 	event.button_mask=MOUSE_BUTTON_MASK_LEFT if down else 0
@@ -34,6 +35,7 @@ func button(pos:Vector2, down:bool) -> void:
 
 func motion(pos:Vector2) -> void:
 	var event:=InputEventMouseMotion.new()
+	event.set_meta("replay_input",true)
 	event.position=pos;event.global_position=pos
 	event.button_mask=MOUSE_BUTTON_MASK_LEFT
 	get_viewport().push_input(event,true)
@@ -74,7 +76,8 @@ func seed_board(cells:Array, color:int) -> void:
 func run(target) -> void:
 	game=target
 	game.apply_settings(true,true,true)
-	output=ProjectSettings.globalize_path("res://verification/v2")
+	var version:=str(ProjectSettings.get_setting("application/config/version")).split(".")
+	output=ProjectSettings.globalize_path("res://verification/v%s.%s"%[version[0],version[1]])
 	if OS.get_cmdline_user_args().has("--showcase"):
 		await showcase()
 		get_tree().quit()
@@ -174,6 +177,7 @@ func run(target) -> void:
 	var file:=FileAccess.open(output+"/playback-result.json",FileAccess.WRITE)
 	file.store_string(JSON.stringify({"checks":checks,"failures":failures,"contacts":contacts},"  "))
 	print("V2 PLAYBACK: ",checks," checks; ",failures.size()," failures")
+	await game._shutdown_audio()
 	get_tree().quit(0 if failures.is_empty() else 1)
 
 func showcase() -> void:

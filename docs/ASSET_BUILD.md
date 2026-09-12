@@ -53,6 +53,6 @@ python tools/verify_audio.py
 
 声音脚本生成短音效和雨声循环，维持未压缩 PCM 导入配置并记录峰值；验证脚本分析素材以及实际 Master 混音。仅分析现有素材时，可直接运行 `python tools/verify_audio.py`，无需重新下载录音；实际录音缺失时报告会注明待录制。
 
-设置、声音和互斥回放默认写入当前版本的测试目录，例如 2.4 对应 `verification/v2.4/`；音频分析器也默认读取该目录。分析旧版录音可显式传入 `python tools/verify_audio.py --output-dir verification/v2.2`。
+设置、声音和互斥回放默认写入当前版本的测试目录，例如 2.5 对应 `verification/v2.5/`；音频分析器也默认读取该目录。分析旧版录音可显式传入 `python tools/verify_audio.py --output-dir verification/v2.4`。
 
-旧版 `tools/build_audio.py` 和 `tests/playback.gd` 保留作早期版本参考，不属于 2.4 的默认构建与验证流程。当前回放入口是 `tests/playback_v2.gd` 及其派生脚本。悬浮、震子和蓄力光束通过 `--verify --feedback-check` 验证。
+旧版 `tools/build_audio.py` 和 `tests/playback.gd` 保留作早期版本参考，不属于当前默认构建与验证流程。当前回放入口是 `tests/playback_v2.gd` 及其派生脚本。悬浮、震子和墨色蓄力通过 `--verify --feedback-check` 验证。

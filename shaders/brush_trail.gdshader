@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_mix, depth_draw_never, cull_disabled, unshaded, shadows_disabled;
+render_mode blend_mix, depth_draw_never, cull_disabled, unshaded, shadows_disabled, fog_disabled;
 uniform vec4 ink : source_color = vec4(.005,.005,.012,1.0);
 uniform float strength = 1.0;
 uniform float flow = 0.0;

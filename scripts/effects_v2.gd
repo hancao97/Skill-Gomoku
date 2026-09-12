@@ -181,7 +181,7 @@ func placement(stone: Node3D, color: int, empowered: bool, storm: bool = false, 
 			# A single, quiet landing sound for the group avoids a stack of 100 clacks.
 			recoil.landed.connect(func():sound("stone_02",-16.0))
 			var front:=wave(end,color,15.0,.50)
-			front.material_override.set_shader_parameter("strength",.32)
+			front.material_override.set_shader_parameter("strength",.60 if color==1 else .32)
 		var strike:=lightning(end,color)
 		await strike.finished
 

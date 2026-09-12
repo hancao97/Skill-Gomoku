@@ -25,11 +25,11 @@ func _ready() -> void:
 			point.x+=rng.randf_range(-.19,.19)
 			point.z+=rng.randf_range(-.13,.13)
 		stem.append(point)
-	_add_bolt(stem,.17 if color==1 else .105)
+	_add_bolt(stem,.34 if color==1 else .105)
 	for index in [4,8,12,16]:
 		var from:=stem[index]
 		var tip:=from+Vector3(rng.randf_range(-1.1,1.1),-rng.randf_range(.55,1.35),rng.randf_range(-.4,.4))
-		_add_bolt(_jagged(from,tip,9),.057 if color==1 else .042)
+		_add_bolt(_jagged(from,tip,9),.085 if color==1 else .042)
 	# Short forks crawl away from the actual contact point, then die out.
 	for i in 6:
 		var angle:=float(i)*TAU/6+rng.randf_range(-.2,.2)
@@ -39,7 +39,7 @@ func _ready() -> void:
 		_add_bolt(points,.050 if color==1 else .032)
 	light=OmniLight3D.new()
 	light.position=Vector3(0,.65,0)
-	light.light_color=Color("#c5c1ec") if color==1 else Color("#e8f0ff")
+	light.light_color=Color("#b9b9b9") if color==1 else Color("#f5f7ff")
 	light.light_energy=0
 	light.omni_range=4.5
 	light.omni_attenuation=1.5
@@ -88,7 +88,7 @@ func _process(delta:float) -> void:
 	envelope=maxf(envelope,(1.0-smoothstep(.28,.46,age))*smoothstep(.22,.245,age)*.72)
 	material.set_shader_parameter("reveal",minf(1.1,age/.035))
 	material.set_shader_parameter("strength",envelope)
-	light.light_energy=envelope*(7.5 if color==1 else 9.0)
+	light.light_energy=envelope*(0.0 if color==1 else 3.6)
 	if age>=.50:
 		cancel()
 

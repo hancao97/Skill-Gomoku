@@ -19,7 +19,7 @@ void fragment() {
 	float lines=line_a*smoothstep(.12,.62,r)*pulse*.48;
 	scene=white_stone ? scene+vec3(lines*.75) : scene-vec3(lines*.55);
 	float flash=exp(-r*2.2)*pulse*.17;
-	scene+=vec3(flash);
+	scene=white_stone?scene+vec3(flash):scene*(1.0-flash*.9);
 	float bars=(1.0-step(.055*amount,SCREEN_UV.y))+step(1.0-.055*amount,SCREEN_UV.y);
 	COLOR=vec4(mix(scene,vec3(.004,.005,.008),clamp(bars,0.0,1.0)),1.0);
 }

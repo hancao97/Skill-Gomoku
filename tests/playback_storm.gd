@@ -5,7 +5,8 @@ var storms:Array[Dictionary]=[]
 func run(target) -> void:
 	game=target
 	game.apply_settings(true,true,true)
-	output=ProjectSettings.globalize_path("res://verification/v2.1")
+	var version:=str(ProjectSettings.get_setting("application/config/version")).split(".")
+	output=ProjectSettings.globalize_path("res://verification/v%s.%s"%[version[0],version[1]])
 	game.fx.thunder_struck.connect(func():
 		var p:Vector2i=game.rules.last
 		storms.append({"round":game.rules.round_index+1,"color":game.stones[p].get_meta("color"),"height":game.stones[p].position.y,"sample":game.fx.thunder_voice.stream.resource_path if is_instance_valid(game.fx.thunder_voice) else ""})
