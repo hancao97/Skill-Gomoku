@@ -28,35 +28,51 @@ func hovering(p:Vector2i,color:int) -> bool:
 func no_charge() -> bool:
 	return not is_instance_valid(game.charge_preview) and not is_instance_valid(game.charge_radiance) and not game.charge_ready
 
-func projected_preview_center(color:int) -> Vector2:
+func projected_stone_center(node:Node3D) -> Vector2:
 	var low:=Vector2(INF,INF)
 	var high:=-low
-	for mesh:MeshInstance3D in game.hover_models[color].find_children("*","MeshInstance3D"):
-		for corner in 8:
-			var vertex:=mesh.global_transform*mesh.get_aabb().get_endpoint(corner)
-			var pixel:Vector2=game.scenery.camera.unproject_position(vertex)
-			low=low.min(pixel);high=high.max(pixel)
+	for mesh:MeshInstance3D in node.find_children("*","MeshInstance3D"):
+		# Project the actual silhouette rather than a rotated enclosing box.
+		for surface in mesh.mesh.get_surface_count():
+			for vertex:Vector3 in mesh.mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]:
+				var pixel:Vector2=game.scenery.camera.unproject_position(mesh.global_transform*vertex)
+				low=low.min(pixel);high=high.max(pixel)
 	return (low+high)*.5
+
+func projected_preview_center(color:int) -> Vector2:
+	return projected_stone_center(game.hover_models[color])
 
 func check_hover_alignment() -> void:
 	var old_size:=get_window().size
+	game.apply_settings(true,true,true,false,false)
 	for size in [Vector2i(1280,800),Vector2i(1920,1200)]:
 		get_window().size=size
 		await pause(.25)
 		for color in [1,2]:
-			game.rules.turn=color
 			for cell:Vector2i in [Vector2i(0,0),Vector2i(14,0),Vector2i(7,7),Vector2i(0,14),Vector2i(14,14)]:
+				game._clear_board()
+				game.rules.reset_match()
+				game.rules.turn=color
 				var target:=pos(cell)
 				move_pointer(target)
 				check(hovering(cell,color),"pointer updates immediately: %s, color %d, cell %s"%[size,color,cell])
 				var pixels_per_unit:=float(size.x)/get_viewport().get_visible_rect().size.x
-				var error:=projected_preview_center(color).distance_to(target)*pixels_per_unit
-				hover_measurements.append({"size":str(size),"color":color,"cell":str(cell),"error_pixels":error})
+				var preview_center:=projected_preview_center(color)
+				var error:=preview_center.distance_to(target)*pixels_per_unit
 				check(error<1.0,"visible stone stays within one pixel of its target: %.3f px"%error)
-				await pause(.015)
+				button(target,true);button(target,false)
+				await idle()
+				await get_tree().process_frame
+				check(game.rules.at(cell)==color and game.rules.last==cell,"actual mouse release places the previewed color and cell")
+				var final_center:=projected_stone_center(game.stones[cell])
+				var landing_error:=final_center.distance_to(preview_center)*pixels_per_unit
+				hover_measurements.append({"size":str(size),"color":color,"cell":str(cell),"error_pixels":error,"landing_error_pixels":landing_error})
+				check(landing_error<.05,"preview and landed silhouettes share their center: %.3f px"%landing_error)
 	game.rules.turn=1
 	get_window().size=old_size
 	await pause(.25)
+	game.apply_settings(true,true,true,true,true)
+	await fixture(0,1)
 	await point(pos(Vector2i(7,7)))
 	var before:=projected_preview_center(1)
 	await pause(.70)
@@ -65,6 +81,17 @@ func check_hover_alignment() -> void:
 	button(pos(selected),true);button(pos(selected),false)
 	await idle()
 	check(game.rules.at(selected)==1 and game.rules.last==selected,"click places on the exact previewed intersection")
+	var landing_error:=projected_stone_center(game.stones[selected]).distance_to(before)
+	check(landing_error<1.0,"landed stone keeps the preview's visible center: %.3f px"%landing_error)
+	await fixture(0,1)
+	seed_board([[6,6],[7,7]],2);seed_board([[7,6],[6,7]],1)
+	await point(pos(Vector2i(8,7)))
+	await capture("alignment-before-placement")
+	var silhouette:=projected_preview_center(1)
+	button(pos(Vector2i(8,7)),true);button(pos(Vector2i(8,7)),false)
+	await idle();await pause(.15)
+	check(projected_stone_center(game.stones[Vector2i(8,7)]).distance_to(silhouette)<.05,"adjacent black and white stones keep the preview aligned after placement")
+	await capture("alignment-after-placement")
 	await fixture(0,1)
 
 func light_sample(name:String) -> void:

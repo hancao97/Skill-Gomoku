@@ -6,6 +6,7 @@ const Effects = preload("res://scripts/effects_v2.gd")
 const Interface = preload("res://scripts/interface.gd")
 const BLACK_MODEL = preload("res://assets/models/black_stone.glb")
 const WHITE_MODEL = preload("res://assets/models/white_stone.glb")
+const StoneVisual = preload("res://scripts/stone_visual.gd")
 const ChargeRadiance = preload("res://scripts/charge_radiance.gd")
 const STEP := .46
 const HEIGHT := .669
@@ -49,7 +50,6 @@ var quitting := false
 var stone_materials: Dictionary = {}
 var hover_preview: Node3D
 var hover_models: Dictionary = {}
-var hover_centers: Dictionary = {}
 var hover_cell := Vector2i(-1,-1)
 var pointer_screen := Vector2(-1,-1)
 var pointer_inside := false
@@ -250,12 +250,13 @@ func _clear_board() -> void:
 	stones.clear()
 
 func _make_stone(p:Vector2i, color:int) -> Node3D:
-	var node:Node3D=(BLACK_MODEL if color==1 else WHITE_MODEL).instantiate()
+	var node:=StoneVisual.new(BLACK_MODEL if color==1 else WHITE_MODEL)
 	stone_root.add_child(node)
 	node.position=world(p)
 	node.rotation.y=fposmod(float(p.x*17+p.y*23)*.29,TAU)
 	node.set_meta("color",color)
 	_neutral_stone(node,color)
+	node.align_visual()
 	stones[p]=node
 	return node
 
@@ -275,18 +276,12 @@ func _make_hover_preview() -> void:
 	hover_preview.name="PointerStone"
 	add_child(hover_preview)
 	for color in [Rules.BLACK,Rules.WHITE]:
-		var model:Node3D=(BLACK_MODEL if color==Rules.BLACK else WHITE_MODEL).instantiate()
+		var model:=StoneVisual.new(BLACK_MODEL if color==Rules.BLACK else WHITE_MODEL)
 		hover_preview.add_child(model)
 		_neutral_stone(model,color)
-		var bounds:=AABB()
-		var first:=true
 		for mesh:MeshInstance3D in model.find_children("*","MeshInstance3D"):
 			mesh.transparency=.22
 			mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			var box:AABB=hover_preview.global_transform.affine_inverse()*mesh.global_transform*mesh.get_aabb()
-			bounds=box if first else bounds.merge(box)
-			first=false
-		hover_centers[color]=bounds.get_center()
 		model.hide()
 		hover_models[color]=model
 	_hide_hover()
@@ -314,15 +309,15 @@ func _update_hover() -> void:
 		_hide_hover()
 		return
 	hover_cell=p
-	# Align the model's visible center with the snapped board point in screen space.
-	# Picking still uses the board plane, so preview and click select the same cell.
-	var center:Vector3=hover_centers[rules.turn]
-	var target:=scenery.camera.unproject_position(world(p))
-	hover_preview.position=screen_to_world(target,HEIGHT+center.y)-center
+	hover_preview.position=world(p)
 	hover_preview.set_meta("color",rules.turn)
-	for color:int in hover_models:hover_models[color].visible=color==rules.turn
 	# The unadorned cursor is an input aid for both players, including with VFX off.
 	hover_preview.show()
+	for color:int in hover_models:
+		var model:Node3D=hover_models[color]
+		model.visible=color==rules.turn
+		model.rotation.y=fposmod(float(p.x*17+p.y*23)*.29,TAU)
+		model.align_visual()
 
 func _convert(p:Vector2i, color:int, aura:bool=true) -> Node3D:
 	if stones.has(p):
@@ -437,7 +432,7 @@ func _update_charge() -> void:
 		charge_ready=t>=1.0
 		return
 	if not is_instance_valid(charge_preview):
-		charge_preview=BLACK_MODEL.instantiate()
+		charge_preview=StoneVisual.new(BLACK_MODEL)
 		charge_preview.name="BoardHeldStone"
 		add_child(charge_preview)
 		charge_preview.position=world(press_cell)
