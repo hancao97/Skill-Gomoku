@@ -50,6 +50,7 @@ python -m pip install -r tools/requirements.txt
 python tools/build_audio_v2.py
 python tools/build_thunder.py
 python tools/build_skill_audio.py
+python tools/build_hand_audio.py
 
 GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot
 "$GODOT_BIN" --headless --editor --path . --import --quit
@@ -61,6 +62,8 @@ python tools/preview_skill_audio.py
 声音脚本生成短音效和雨声循环，维持未压缩 PCM 导入配置并记录峰值；验证脚本分析素材以及实际 Master 混音。仅分析现有素材时，可直接运行 `python tools/verify_audio.py`，无需重新下载录音；实际录音缺失时报告会注明待录制。
 
 `build_skill_audio.py` 只重制技能与胜利声音，可以单独运行；全量重建时应放在旧版构建脚本之后。当前版本使用 Freesound 页面公开的高质量 MP3 预览，源文件摘要记入本地 `verification/v2.6/skill-audio-build.json`。脚本生成的张力和聚气循环区间与 `scripts/effects_v2.gd` 中的 `GESTURE_LOOPS` 对应，修改区间后须同时更新音频测量脚本并重跑声音回放。
+
+`build_hand_audio.py` 只重建「神之一手」三段音频，输出摘要位于 `verification/v2.7/hand-audio-build.json`。它使用前表中的 Magic Whoosh、Icy Magic Cast、Reverberant Slam 三份源文件，以及已有的 `stone_02.wav`。仓库内 WAV 的 `.import` 文件固定为未压缩 PCM，重建时保留这些配置。手形由 `scripts/rules.gd` 的 `HAND_SHAPE` 统一定义，空中棋子和最终白子手印共享同一组交点；动画实现见 `scripts/divine_hand.gd`。
 
 设置、声音和互斥回放默认写入当前版本的测试目录，例如 2.5 对应 `verification/v2.5/`；音频分析器也默认读取该目录。分析旧版录音可显式传入 `python tools/verify_audio.py --output-dir verification/v2.4`。
 

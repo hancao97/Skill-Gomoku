@@ -38,3 +38,8 @@ License: https://creativecommons.org/publicdomain/zero/1.0/
 Public high-quality MP3 previews were used as source files; decoding to PCM does not restore information absent from those previews.
 Edits include trimming, EQ, pitch/time adjustment, short reflections, stereo movement, and layering with generated modal resonances and seamless pressure/tension beds.
 Reproducible composition: tools/build_skill_audio.py. Downloaded source files stay outside the distributed assets; the finished game cues are provided with this project.
+
+DIVINE HAND (2.7)
+Three additional embedded cues: hand_gather, hand_point, hand_impact.
+Uses the CC0 DustyWind Magic Whoosh, Icy Magic Cast and Reverberant Slam works credited above, plus edited fragments of the Taira Komori go-stone recording under the same embedded-game permission.
+Composition: timed stone contacts, filtered air and impact layers, stereo movement, generated resonances, fades and reconstruction headroom. Rebuild with tools/build_hand_audio.py; no new third-party source recordings are required.

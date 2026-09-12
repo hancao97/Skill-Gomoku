@@ -8,6 +8,16 @@ const WHITE := 2
 const AXES := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, -1)]
 const NEIGHBORS := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1),
 	Vector2i(1,1), Vector2i(1,-1), Vector2i(-1,1), Vector2i(-1,-1)]
+# Wrist enters from the far right; the long index points toward the near left.
+# Both the airborne hand and its lasting board impression use this silhouette.
+const HAND_SHAPE := [
+	"...............", "..........###..", ".........####..",
+	".........####..", "........#####..", ".......######..",
+	"......#######..", ".....########..", ".....########..",
+	"....##.##.#.#..", "...##..##.#.#..", "..##...##.#....",
+	"..##...........", "..#............", "...............",
+]
+const HAND_TIP := Vector2i(2,13)
 
 var board: Array[int] = []
 var wins: Array[int] = [0, 0]
@@ -26,6 +36,7 @@ var moon_ring: Array[Vector2i] = []
 var moon_center := Vector2.ZERO
 var bow_used := false
 var moon_used := false
+var divine_hand_used := false
 var effects_enabled := true
 var skills_enabled := true
 
@@ -97,6 +108,7 @@ func reset_board() -> void:
 	moon_ring.clear()
 	bow_used = false
 	moon_used = false
+	divine_hand_used = false
 
 func place(p: Vector2i) -> Dictionary:
 	if not active() or pending_skill == "moon":
@@ -283,6 +295,35 @@ func resolve_moon() -> Dictionary:
 func can_charge() -> bool:
 	return skills_enabled and active() and pending_skill != "moon" and current_player() == 0 and turn == BLACK
 
+static func divine_hand_cells() -> Array[Vector2i]:
+	var cells:Array[Vector2i]=[]
+	for y in HAND_SHAPE.size():
+		for x in HAND_SHAPE[y].length():
+			if HAND_SHAPE[y][x]=="#":cells.append(Vector2i(x,y))
+	return cells
+
+func divine_hand_available() -> bool:
+	return skills_enabled and active() and round_index==1 and not divine_hand_used
+
+func can_divine_hand() -> bool:
+	return divine_hand_available() and current_player()==0 and turn==WHITE and pending_skill.is_empty()
+
+func divine_hand() -> Dictionary:
+	if not can_divine_hand():return {"ok":false}
+	var area:=divine_hand_cells()
+	var changed:Array[Vector2i]=[]
+	for p:Vector2i in area:
+		if at(p)!=WHITE:
+			put(p,WHITE)
+			changed.append(p)
+	divine_hand_used=true
+	last=HAND_TIP
+	move_count+=1
+	history.append([last.x,last.y,WHITE])
+	winning_line=any_line(WHITE)
+	_finish(0,"divine_hand")
+	return {"ok":true,"area":area,"changed":changed,"tip":HAND_TIP}
+
 func cosmos(p: Vector2i) -> Dictionary:
 	if not can_charge() or not inside(p) or at(p) != EMPTY:
 		return {"ok": false}
@@ -317,7 +358,7 @@ func serialize() -> Dictionary:
 	return {"version": 2, "board": board, "wins": wins, "round": round_index,
 		"turn": turn, "winner": round_winner, "match_winner": match_winner,
 		"finish_kind": finish_kind, "last": [last.x,last.y], "move_count": move_count,
-		"history": history, "bow_used": bow_used, "moon_used": moon_used,
+		"history": history, "bow_used": bow_used, "moon_used": moon_used, "divine_hand_used":divine_hand_used,
 		"pending": pending_skill}
 
 func restore(data: Dictionary) -> bool:
@@ -353,6 +394,7 @@ func restore(data: Dictionary) -> bool:
 	history = data.get("history",[]).duplicate()
 	bow_used = bool(data.get("bow_used",false))
 	moon_used = bool(data.get("moon_used",false))
+	divine_hand_used = bool(data.get("divine_hand_used",false))
 	pending_skill = str(data.get("pending",""))
 	bow_anchors.clear()
 	moon_ring.clear()

@@ -29,7 +29,10 @@ def write(name, data):
 reel = []
 manifest = []
 offset = 0.0
-for key, end, title in [('bow','moon','会挽雕弓如满月'),('moon','cosmos','遥遥领先'),('cosmos','victory-and-next-round','天地大同')]:
+tracks=[('bow','moon','会挽雕弓如满月'),('moon','cosmos','遥遥领先'),
+    ('cosmos','divine-hand' if 'divine-hand' in marks else 'victory-and-next-round','天地大同')]
+if 'divine-hand' in marks:tracks.append(('divine-hand','victory-and-next-round','神之一手'))
+for key, end, title in tracks:
     start = marks[key+'-performance']
     stop = marks[end]
     part = recording[round(start*rate):round(stop*rate)].astype('float64')

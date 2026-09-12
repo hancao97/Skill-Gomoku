@@ -21,6 +21,9 @@ const CUES := {
 	"thunder_01": preload("res://assets/audio/v2/thunder_01.wav"),
 	"thunder_02": preload("res://assets/audio/v2/thunder_02.wav"),
 	"victory": preload("res://assets/audio/v2/victory.wav"),
+	"hand_gather": preload("res://assets/audio/v2/hand_gather.wav"),
+	"hand_point": preload("res://assets/audio/v2/hand_point.wav"),
+	"hand_impact": preload("res://assets/audio/v2/hand_impact.wav"),
 }
 const GESTURE_LOOPS := {
 	"bow_draw": Vector2(.50,1.14),

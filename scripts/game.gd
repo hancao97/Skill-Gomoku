@@ -8,6 +8,8 @@ const BLACK_MODEL = preload("res://assets/models/black_stone.glb")
 const WHITE_MODEL = preload("res://assets/models/white_stone.glb")
 const StoneVisual = preload("res://scripts/stone_visual.gd")
 const ChargeRadiance = preload("res://scripts/charge_radiance.gd")
+const DivineHand = preload("res://scripts/divine_hand.gd")
+const HAND_TOKEN_POSITION := Vector3(-4.76,-.37,2.78)
 const STEP := .46
 const HEIGHT := .669
 const SAVE_PATH := "user://match.json"
@@ -51,6 +53,9 @@ var stone_materials: Dictionary = {}
 var hover_preview: Node3D
 var hover_models: Dictionary = {}
 var hover_cell := Vector2i(-1,-1)
+var hand_token:Node3D
+var hand_token_pressed:=false
+var hand_effect:Node3D
 var pointer_screen := Vector2(-1,-1)
 var pointer_inside := false
 var isolated_replay := false
@@ -108,6 +113,7 @@ func _ready() -> void:
 	fx.thunder_struck.connect(func():shake(.028,.22))
 	_load_settings()
 	_make_hover_preview()
+	_make_hand_token()
 	_load_match()
 	ui.show_menu(not saved_match.is_empty())
 	await _warmup_visuals()
@@ -118,6 +124,7 @@ func _ready() -> void:
 		if OS.get_cmdline_user_args().has("--settings-check"):test_path="res://tests/playback_settings.gd"
 		if OS.get_cmdline_user_args().has("--feedback-check"):test_path="res://tests/playback_feedback.gd"
 		if OS.get_cmdline_user_args().has("--hover-check"):test_path="res://tests/playback_feedback.gd"
+		if OS.get_cmdline_user_args().has("--hand-check"):test_path="res://tests/playback_divine_hand.gd"
 		var runner = load(test_path).new()
 		add_child(runner)
 		runner.call_deferred("run",self)
@@ -177,9 +184,14 @@ func _warmup_visuals() -> void:
 	fx.add_child(radiance)
 	radiance.position=at
 	radiance.set_charge(.8)
+	var hand_warmup:=DivineHand.new()
+	add_child(hand_warmup)
+	hand_warmup.elapsed=DivineHand.ASSEMBLY_TIME
+	hand_warmup._update_pieces()
+	hand_warmup.set_process(false)
 	await get_tree().create_timer(1.4).timeout
 	await RenderingServer.frame_post_draw
-	disk.queue_free();stone.queue_free();radiance.cancel()
+	disk.queue_free();stone.queue_free();radiance.cancel();hand_warmup.queue_free()
 	await ui.stage.end()
 	fx.clear_transients()
 	var reveal:=create_tween()
@@ -248,6 +260,8 @@ func _clear_board() -> void:
 	fx.clear_transients()
 	for child in stone_root.get_children():child.queue_free()
 	stones.clear()
+	if is_instance_valid(hand_effect):hand_effect.queue_free()
+	hand_effect=null
 
 func _make_stone(p:Vector2i, color:int) -> Node3D:
 	var node:=StoneVisual.new(BLACK_MODEL if color==1 else WHITE_MODEL)
@@ -329,9 +343,30 @@ func _convert(p:Vector2i, color:int, aura:bool=true) -> Node3D:
 
 func _refresh() -> void:
 	ui.refresh(rules,busy,acting_player if busy else -1,acting_color)
+	_update_hand_token()
+
+func _make_hand_token() -> void:
+	hand_token=StoneVisual.new(WHITE_MODEL)
+	hand_token.name="WhiteStoneBesideBlackBowl"
+	add_child(hand_token)
+	hand_token.position=HAND_TOKEN_POSITION
+	hand_token.scale=Vector3.ONE*1.16
+	_neutral_stone(hand_token,Rules.WHITE)
+	_update_hand_token()
+
+func _update_hand_token() -> void:
+	if is_instance_valid(hand_token):
+		hand_token.visible=playing and rules.divine_hand_available() and not in_cinema
+
+func _hand_token_hit(screen:Vector2) -> bool:
+	if not is_instance_valid(hand_token) or not hand_token.visible:return false
+	var center:=scenery.camera.unproject_position(HAND_TOKEN_POSITION)
+	var edge:=scenery.camera.unproject_position(HAND_TOKEN_POSITION+Vector3.RIGHT*.27)
+	return screen.distance_to(center)<=maxf(center.distance_to(edge),12.0)
 
 func _process(delta:float) -> void:
 	_update_hover()
+	_update_hand_token()
 	if shake_remaining>0:
 		shake_remaining=maxf(0,shake_remaining-delta)
 		scenery.camera.h_offset=sin(shake_remaining*81.0)*shake_strength*shake_remaining
@@ -362,6 +397,12 @@ func _unhandled_input(event:InputEvent) -> void:
 			return
 	if not playing or busy or paused or ui.modal.visible or not rules.active():return
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and event.pressed:
+		if _hand_token_hit(event.position):
+			if rules.can_divine_hand():
+				hand_token_pressed=true
+				press_screen=event.position
+			get_viewport().set_input_as_handled()
+			return
 		var p:=screen_to_cell(event.position)
 		if not rules.inside(p):return
 		if rules.pending_skill=="bow" and rules.bow_anchors.has(p):
@@ -382,16 +423,22 @@ func _input(event:InputEvent) -> void:
 		pointer_screen=event.position
 		pointer_inside=true
 		if event is InputEventMouseMotion:_update_hover()
-	if anchor.x<0 and press_cell.x<0:return
+	if anchor.x<0 and press_cell.x<0 and not hand_token_pressed:return
 	if busy or paused or ui.modal.visible:
 		_cancel_gesture()
 		return
 	if event is InputEventMouseMotion:
-		if anchor.x>=0:_aim_bow(event.position)
+		if hand_token_pressed:
+			if event.position.distance_to(press_screen)>18:_cancel_gesture()
+		elif anchor.x>=0:_aim_bow(event.position)
 		elif event.position.distance_to(press_screen)>26:_cancel_gesture()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
-		if anchor.x>=0:
+		if hand_token_pressed:
+			var activate:=_hand_token_hit(event.position) and rules.can_divine_hand()
+			_cancel_gesture()
+			if activate:_divine_hand()
+		elif anchor.x>=0:
 			var shot_anchor:=anchor
 			var shot_direction:=direction
 			anchor=Vector2i(-1,-1)
@@ -407,6 +454,7 @@ func _input(event:InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _cancel_gesture() -> void:
+	hand_token_pressed=false
 	if stones.has(anchor):stones[anchor].position=world(anchor)
 	anchor=Vector2i(-1,-1)
 	direction=Vector2i.ZERO
@@ -762,6 +810,62 @@ func _finish_plain_skill(cue:String, volume:float) -> void:
 	scenery.duck(.8)
 	save_match()
 	await _round_end(.3)
+
+func _divine_hand() -> void:
+	if busy or paused or not playing:return
+	var result:=rules.divine_hand()
+	if not result.ok:return
+	busy=true
+	acting_player=0
+	acting_color=Rules.WHITE
+	_cancel_gesture()
+	_hide_hover()
+	fx.clear_lightning()
+	save_match()
+	_refresh()
+	if not ui.effects_on:
+		await _finish_plain_skill("hand_impact",-5)
+		return
+	var focus:=world(Vector2i(7,7))
+	_cinema_begin(Rules.WHITE,focus)
+	_camera_to(Vector3(0,11.8,10.5),Vector3(0,1.1,.1),44,.65)
+	hand_effect=DivineHand.new()
+	hand_effect.source=HAND_TOKEN_POSITION
+	hand_effect.cell_landed.connect(func(p:Vector2i):
+		_convert(p,Rules.WHITE,false)
+		if (p.x+p.y)%9==0:fx.glint(world(p)+Vector3.UP*.12,.44,.34)
+	)
+	add_child(hand_effect)
+	fx.sound("hand_gather",-8)
+	fx.glint(HAND_TOKEN_POSITION+Vector3.UP*.14,.8,.55)
+	fx.smoke(HAND_TOKEN_POSITION+Vector3.UP*.18,Rules.WHITE,1.0,true,22,.85)
+	for i in 4:
+		var trail:Array[Vector3]=[]
+		var end:=world(Vector2i(8+i,5))+Vector3.UP*2.0
+		var bend:=HAND_TOKEN_POSITION.lerp(end,.50)+Vector3(0,2.9+float(i)*.15,0)
+		for j in 20:
+			var t:=float(j)/19.0
+			trail.append(HAND_TOKEN_POSITION.lerp(bend,t).lerp(bend.lerp(end,t),t))
+		fx.fade(fx.ribbon(trail,.04,Color(.94,.94,.94,.48),true),1.4)
+	await hand_effect.assembled
+	fx.sound("hand_point",-9)
+	await hand_effect.contacted
+	fx.sound("hand_impact",-5)
+	scenery.duck(1.0)
+	ui.stage.strike(.9)
+	shake(.075,.5)
+	var tip:=world(Rules.HAND_TIP)
+	fx.glint(tip+Vector3.UP*.15,2.5,.6)
+	fx.wave(tip,Rules.WHITE,15.5,.86)
+	fx.slashes(tip,Rules.WHITE,4.7,11)
+	fx.smoke(tip+Vector3.UP*.1,Rules.WHITE,1.5,true,35,.8)
+	await hand_effect.finished
+	hand_effect.queue_free()
+	hand_effect=null
+	ui.stage.inscription("divine_hand",Rules.WHITE)
+	await get_tree().create_timer(2.7).timeout
+	await _cinema_end()
+	await _round_end(.25)
 
 func shake(strength:float, duration:float) -> void:
 	if not ui.effects_on:return
