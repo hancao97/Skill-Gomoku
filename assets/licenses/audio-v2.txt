@@ -8,17 +8,33 @@ BOW RELEASE
 Bow Release (Bow and Arrow) — Ali_6868
 https://freesound.org/people/Ali_6868/sounds/384915/
 CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/
-Edited for bow release, draw and white skill air / motion.
+Edited as the dry string layer for the bow, with a subtle contact layer in the black skills.
 
-GO STONE AND JAPANESE DRUM RECORDINGS
+GO STONE AND LEGACY JAPANESE DRUM RECORDINGS
 (c) Taira Komori
 https://taira-komori.net/playing01.html
 Files: a_Go_stone.mp3, large_drum1.mp3, large_drum3.mp3
 Permission: https://taira-komori.net/welcome.html
 Author permits game / application / commercial use, editing and format conversion without contact or payment. Link credit is requested when possible. Do not claim authorship or redistribute / resell the recordings as standalone sound effects. These edited cues are embedded in this game, not offered as a sound library.
+Version 2.6 retains the go-stone recording. The drum-based skill edits are part of the legacy build, replaced by the layered cues below.
 
 PLACEMENT LIGHTNING / THUNDER (2.1)
 (c) Taira Komori — https://taira-komori.net/nature01cn.html
 Files: lightning1.mp3, lightning2.mp3, thunder1.mp3
 Same game-embedding permission: https://taira-komori.net/welcome.html
 Edited into two 3.25 second stereo cues: trimmed leading silence, retained the recorded crack and rolling low thunder, gently filtered and faded. Embedded game use only; not a standalone sound library.
+
+LAYERED SKILL SOUND DESIGN (2.6)
+DustyWind — CC0 1.0 Universal
+Magic Whoosh — https://freesound.org/people/DustyWind/sounds/715784/
+Icy Magic Cast — https://freesound.org/people/DustyWind/sounds/691005/
+Scifi Riser Tension — https://freesound.org/people/DustyWind/sounds/691006/
+Reverberant Slam Hit Far — https://freesound.org/people/DustyWind/sounds/691626/
+
+AudioPapkin — CC0 1.0 Universal
+Sound Design Elements Impact SFX PS 091 — https://freesound.org/people/AudioPapkin/sounds/814885/
+
+License: https://creativecommons.org/publicdomain/zero/1.0/
+Public high-quality MP3 previews were used as source files; decoding to PCM does not restore information absent from those previews.
+Edits include trimming, EQ, pitch/time adjustment, short reflections, stereo movement, and layering with generated modal resonances and seamless pressure/tension beds.
+Reproducible composition: tools/build_skill_audio.py. Downloaded source files stay outside the distributed assets; the finished game cues are provided with this project.

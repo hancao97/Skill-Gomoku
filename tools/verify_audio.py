@@ -56,6 +56,14 @@ for path in assets:
         row['endpoint_peak'] = float(np.max(np.abs(a[[0,-1]])))
         if row['endpoint_peak'] > .0001:
             failures.append(path.name+': nonzero cue boundary')
+    gesture_loops = {'bow_draw':(.50,1.14),'charge':(1.68,2.48)}
+    if path.stem in gesture_loops:
+        begin,end = [round(t*RATE) for t in gesture_loops[path.stem]]
+        loop = a[begin:end]
+        row['gesture_loop_seam_delta'] = float(np.max(np.abs(loop[0]-loop[-1])))
+        row['gesture_loop_delta_p999'] = float(np.quantile(np.abs(np.diff(loop,axis=0)),.999))
+        if row['gesture_loop_seam_delta'] > max(.0001,row['gesture_loop_delta_p999']*1.5):
+            failures.append(path.name+': discontinuous gesture loop')
     if row['clipped_samples'] or row['true_peak_4x_dbtp'] > -1.98:
         failures.append(path.name+': insufficient source headroom')
     if max(abs(v) for v in row['dc_offset']) > .002:

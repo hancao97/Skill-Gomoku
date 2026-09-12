@@ -426,7 +426,7 @@ func _update_charge() -> void:
 	if not charge_started:
 		charge_started=true
 		fx.clear_lightning()
-		charge_audio=fx.sound("charge",-9)
+		charge_audio=fx.sound("charge",-12)
 	var t:=clampf((hold_time-.32)/(HOLD_SECONDS-.32),0,1)
 	if not ui.effects_on:
 		charge_ready=t>=1.0
@@ -498,10 +498,16 @@ func _aim_bow(mouse:Vector2) -> void:
 			direction=candidate
 	if direction==Vector2i.ZERO:
 		stones[anchor].position=base
+		if is_instance_valid(draw_audio):fx.release_sound(draw_audio,.08)
+		draw_audio=null
 		return
 	if not is_instance_valid(draw_audio):
 		fx.clear_lightning()
-		draw_audio=fx.sound("bow_draw",-4)
+		draw_audio=fx.sound("bow_draw",-14)
+	if is_instance_valid(draw_audio) and not draw_audio.has_meta("releasing"):
+		var tension:=clampf((dist-.22)/.93,0,1)
+		draw_audio.volume_db=lerpf(-17,-10,tension)+fx.volume_db
+		draw_audio.pitch_scale=lerpf(.90,1.10,tension)
 	var vector:=Vector3(direction.x,0,direction.y).normalized()
 	var pull:=base-vector*minf(dist,1.15)+Vector3.UP*.22
 	stones[anchor].position=pull
@@ -562,7 +568,7 @@ func _bow(p:Vector2i, d:Vector2i) -> void:
 	save_match()
 	_refresh()
 	if not ui.effects_on:
-		await _finish_plain_skill("bow_release",0)
+		await _finish_plain_skill("bow_release",-4)
 		return
 	var projectile:Node3D=stones[p]
 	stones.erase(p)
@@ -572,7 +578,7 @@ func _bow(p:Vector2i, d:Vector2i) -> void:
 	_cinema_begin(1,world(p).lerp(world(result.path.back()),.42))
 	fx.smoke(start,1,1.7,true,35,.9)
 	await get_tree().create_timer(.36).timeout
-	fx.sound("bow_release",0)
+	fx.sound("bow_release",-4)
 	ui.stage.strike(.8)
 	shake(.07,.4)
 	var trace:Array[Vector3]=[]
@@ -595,7 +601,7 @@ func _bow(p:Vector2i, d:Vector2i) -> void:
 	await flight.finished
 	projectile.queue_free()
 	for q:Vector2i in result.changed:_convert(q,1)
-	fx.sound("impact",-6)
+	fx.sound("impact",-5)
 	fx.slashes(world(result.path.back()),1,2.2,7)
 	ui.stage.strike(.7)
 	ui.stage.inscription("bow",1)
@@ -610,14 +616,14 @@ func _moon() -> void:
 	acting_color=Rules.WHITE
 	_refresh()
 	if not ui.effects_on:
-		if rules.resolve_moon().ok:await _finish_plain_skill("moon_impact",-2)
+		if rules.resolve_moon().ok:await _finish_plain_skill("moon_impact",-5)
 		return
 	var center:=world_float(rules.moon_center)
 	var orbit:Array[Vector2i]=rules.moon_ring.duplicate()
 	_cinema_begin(2,center)
 	var disk:=fx.moon_disk(center+Vector3.UP*.05)
 	var disk_material:ShaderMaterial=disk.material_override
-	fx.sound("moon_rise",0)
+	fx.sound("moon_rise",-7)
 	var streaks:=Node3D.new()
 	add_child(streaks)
 	for i in 4:
@@ -655,7 +661,7 @@ func _moon() -> void:
 		stones[q].scale=Vector3.ONE
 	var result:=rules.resolve_moon()
 	save_match()
-	fx.sound("moon_impact",-2)
+	fx.sound("moon_impact",-5)
 	scenery.duck(1.0)
 	ui.stage.strike(1.0)
 	shake(.07,.65)
@@ -684,7 +690,7 @@ func _cosmos(p:Vector2i) -> void:
 	save_match()
 	_refresh()
 	if not ui.effects_on:
-		await _finish_plain_skill("cosmos_impact",-1)
+		await _finish_plain_skill("cosmos_impact",-4)
 		return
 	var origin:=world(p)
 	var stone:=_make_stone(p,1)
@@ -695,6 +701,7 @@ func _cosmos(p:Vector2i) -> void:
 	mat.set_shader_parameter("charge",1.0)
 	for mesh:MeshInstance3D in stone.find_children("*","MeshInstance3D"):mesh.material_override=mat
 	_cinema_begin(1,origin,true)
+	fx.sound("cosmos_descent",-6)
 	fx.smoke(stone.position,1,3.0,false,45,1.5).reparent(stone)
 	await get_tree().create_timer(.55).timeout
 	var hang:=create_tween()
@@ -708,7 +715,7 @@ func _cosmos(p:Vector2i) -> void:
 	for child in stone.get_children():
 		if child is GPUParticles3D:child.queue_free()
 	fx.bind_aura(stone,1)
-	fx.sound("cosmos_impact",-1)
+	fx.sound("cosmos_impact",-4)
 	scenery.duck(1.0)
 	ui.stage.strike(1.25)
 	shake(.15,.9)

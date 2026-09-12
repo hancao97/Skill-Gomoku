@@ -17,9 +17,14 @@ const CUES := {
 	"moon_rise": preload("res://assets/audio/v2/moon_rise.wav"),
 	"moon_impact": preload("res://assets/audio/v2/moon_impact.wav"),
 	"cosmos_impact": preload("res://assets/audio/v2/cosmos_impact.wav"),
+	"cosmos_descent": preload("res://assets/audio/v2/cosmos_descent.wav"),
 	"thunder_01": preload("res://assets/audio/v2/thunder_01.wav"),
 	"thunder_02": preload("res://assets/audio/v2/thunder_02.wav"),
 	"victory": preload("res://assets/audio/v2/victory.wav"),
+}
+const GESTURE_LOOPS := {
+	"bow_draw": Vector2(.50,1.14),
+	"charge": Vector2(1.68,2.48),
 }
 var sound_enabled := true
 var visuals_enabled := true
@@ -49,6 +54,13 @@ func sound(cue: String, db: float = -4.0, pitch: float = 1.0) -> AudioStreamPlay
 		return null
 	var player := AudioStreamPlayer.new()
 	player.stream = CUES[cue]
+	if GESTURE_LOOPS.has(cue):
+		var stream:AudioStreamWAV=CUES[cue].duplicate()
+		var region:Vector2=GESTURE_LOOPS[cue]
+		stream.loop_mode=AudioStreamWAV.LOOP_FORWARD
+		stream.loop_begin=roundi(region.x*stream.mix_rate)
+		stream.loop_end=roundi(region.y*stream.mix_rate)
+		player.stream=stream
 	player.bus = &"Thunder" if cue.begins_with("thunder_") else &"Effects"
 	player.volume_db = db+volume_db
 	player.pitch_scale = pitch

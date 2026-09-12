@@ -2,7 +2,7 @@
 
 雨落松间，棋起万象。使用 **Godot + Blender** 制作的本地双人 3D 五子棋，包含雨林棋境、黑白棋子专属演出和三种隐藏技法。
 
-当前版本 **2.5.3**。运行与导出已在 **macOS / Apple Silicon、Godot 4.7.2、Forward+ / Metal** 上验证；其他平台尚未验证。两位玩家共用一台电脑和鼠标。
+当前版本 **2.6.0**。运行与导出已在 **macOS / Apple Silicon、Godot 4.7.2、Forward+ / Metal** 上验证；其他平台尚未验证。两位玩家共用一台电脑和鼠标。
 
 ![雨中棋盘实机画面](docs/images/gameplay.png)
 
@@ -64,6 +64,8 @@ GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot
 
 2.5.2 将落雷的雷鸣声调低 3 dB，使落子时的声音更柔和。
 
+2.6 重做了三招的声音：挽弓有随拉动变化的绷弦声、破风和短促穿透声；白棋月轮以旋转声汇聚成清亮扩散；天地大同持续聚气，松手后吸气收声，在触盘时重落。正常胜利以短促收势声结束。技能声音保留独立淡出、持续蓄力循环与主输出限幅；详见 [声音设计](AUDIO.md)。
+
 **雷电、震子与技能演出互斥**，大招不会再叠加普通落雷。关闭特效或开始技能时会清理残留演出，将棋子恢复原位。
 
 <details>
@@ -122,7 +124,7 @@ mkdir -p builds
 
 `--verify` 使用独立内存棋局，不覆盖玩家存档或声音设置；测试目录自动建立。结果、截图和录音写入 `verification/`，不会提交到 Git 或打包进游戏。
 
-`--hover-check` 检查预览中心对齐、即时跟随、实际点击前后轮廓中心一致及隐藏条件，覆盖黑白棋、两种窗口尺寸和棋盘中央与四角，结果写入包含完整补丁版本号的目录（当前为 `verification/v2.5.3/`）。
+`--hover-check` 检查预览中心对齐、即时跟随、实际点击前后轮廓中心一致及隐藏条件，覆盖黑白棋、两种窗口尺寸和棋盘中央与四角，结果写入包含完整补丁版本号的目录（当前为 `verification/v2.6.0/`）。
 
 macOS 后台自动回放可追加 `--isolated-replay`：固定大小的测试窗口保持绘制，忽略桌面真实鼠标与焦点变化，测试脚本仍走游戏输入与控件处理。失焦取消由回放显式触发同一处理函数。普通游戏不受该测试选项影响。
 
@@ -159,7 +161,7 @@ Godot 的 `user://` 目录中包含 `match.json` 和 `settings.cfg`。macOS 默�
 ## 素材与署名
 
 - 场景、棋具和植被由本工程的 Blender 模型构建，可编辑源文件随仓库提供。
-- 雨声来自 **Félix Blume**，放弦声来自 **Ali_6868**，均为 CC0；落子、鼓击与雷鸣采用 **Taira Komori（小森平）** 录音，遵循作者允许的游戏内嵌使用条款。来源与许可见 [音频说明](assets/licenses/audio-v2.txt)。原始音效下载不作为独立素材库随仓库分发。
+- 雨声来自 **Félix Blume**，放弦声来自 **Ali_6868**，技能设计元素来自 **DustyWind、AudioPapkin**，均为 CC0；落子与雷鸣采用 **Taira Komori（小森平）** 录音，遵循作者允许的游戏内嵌使用条款。来源、加工方式与许可见 [音频说明](assets/licenses/audio-v2.txt)。原始音效下载不作为独立素材库随仓库分发。
 - Noto Sans SC、Noto Serif SC、Ma Shan Zheng 字体附带 [OFL](assets/fonts/OFL.txt) 与 [Ma Shan Zheng OFL](assets/fonts/MaShanZheng-OFL.txt)。
 - 三幅特技书法由图像生成工具制作，记录见 [ASSETS_V2.md](ASSETS_V2.md)。
 
