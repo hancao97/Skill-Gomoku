@@ -303,7 +303,7 @@ static func divine_hand_cells() -> Array[Vector2i]:
 	return cells
 
 func divine_hand_available() -> bool:
-	return skills_enabled and active() and round_index==1 and not divine_hand_used
+	return skills_enabled and active() and color_for(0)==WHITE and not divine_hand_used
 
 func can_divine_hand() -> bool:
 	return divine_hand_available() and current_player()==0 and turn==WHITE and pending_skill.is_empty()

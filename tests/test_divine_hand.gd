@@ -18,7 +18,7 @@ func _initialize() -> void:
 				for skills in [false,true]:
 					r.reset_match();r.round_index=index;r.turn=color
 					r.configure_features(effects,skills)
-					var eligible:bool=index==1 and color==2 and skills
+					var eligible:bool=index in [1,3] and color==2 and skills
 					check(r.can_divine_hand()==eligible,"Ownership/round/turn/settings gate %s"%str([index,color,effects,skills]))
 					check(r.divine_hand().ok==eligible,"Resolver independently enforces eligibility %s"%str([index,color,effects,skills]))
 	r.reset_match();r.round_index=1;r.turn=2
@@ -56,5 +56,24 @@ func _initialize() -> void:
 	check(not r.divine_hand_available(),"Skill toggle removes the hidden token")
 	r.configure_features(false,true)
 	check(r.divine_hand_available() and r.divine_hand().ok,"Effects-off still allows the same hand result")
+	# A use in round two must not consume the hand in the next White round.
+	r.reset_match();r.round_index=1;r.wins=[1,0];r.turn=Rules.WHITE
+	check(r.divine_hand().ok and r.wins==[2,0],"Second-round hand can follow a first-round victory")
+	check(r.next_round() and not r.divine_hand_available() and not r.divine_hand_used,"Black round clears the per-round use without showing a White token")
+	for i in 5:
+		r.place(Vector2i(i*2,14))
+		r.place(Vector2i(i,0))
+	check(r.round_winner==1 and r.wins==[2,1],"Opponent's ordinary third-round win keeps the match alive")
+	check(r.next_round() and r.round_index==3 and r.divine_hand_available(),"Fourth round restores the spare white stone")
+	check(not r.can_divine_hand() and not r.divine_hand().ok,"Fourth-round Black cannot use the advantage player's hand")
+	r.place(Vector2i(14,14))
+	check(r.can_divine_hand(),"Fourth-round White can activate after Black's move")
+	saved=r.serialize()
+	check(restored.restore(saved) and restored.can_divine_hand(),"Existing fourth-round saves immediately expose the White hand")
+	saved.erase("divine_hand_used")
+	check(restored.restore(saved) and restored.can_divine_hand(),"Older fourth-round saves without the optional use flag remain compatible")
+	check(restored.divine_hand().ok and restored.wins==[3,1] and restored.match_winner==0,"Fourth-round hand can win the match after already being used in round two")
+	check(area.all(func(p:Vector2i):return restored.at(p)==Rules.WHITE) and restored.at(Vector2i(14,14))==Rules.BLACK,"Fourth-round hand fills its footprint and preserves an outside opponent stone")
+	check(not restored.divine_hand().ok and restored.wins==[3,1],"Fourth-round result cannot score twice")
 	print("DIVINE HAND RULES: ",checks," checks; ",failures.size()," failures")
 	quit(0 if failures.is_empty() else 1)
