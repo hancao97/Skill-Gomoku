@@ -109,10 +109,12 @@ T 形支持上下左右四个方向，不接受端点邻子或斜邻子。成形
 ```sh
 mkdir -p builds
 "$GODOT_BIN" --headless --editor --path . --import --quit
-"$GODOT_BIN" --headless --path . --export-release macOS builds/听雨弈境.app
+"$GODOT_BIN" --headless --path . --export-release macOS builds/听雨弈境.zip
 ```
 
 导出预设包含应用图标、资源过滤和 macOS 临时签名。产物位于 `builds/`，不提交到 Git。面向其他电脑分发时，开发者签名与 Apple 公证需使用自己的证书另行配置。
+
+macOS 默认导出为 **ZIP**。安装时只将解压后的应用放入 `/Applications/听雨弈境.app`；旧版本先压缩并校验，再收进 `builds/archive.noindex/`，安装完成后清理临时解压副本。不要在项目目录长期保留多个 `.app`，否则 macOS 搜索会出现同名应用入口。更新应用时保留 `user://` 中的棋局和设置。
 
 ## 验证
 
